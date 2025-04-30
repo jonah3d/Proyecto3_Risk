@@ -11,7 +11,7 @@ public class Avatars {
     @Column(name = "name")
     private String name;
     @Basic(optional = false)
-    @Column(name = "url", unique = true, nullable = false, length = 45)
+    @Column(name = "url", unique = true, nullable = false)
     private String url;
 
     public Avatars() {
