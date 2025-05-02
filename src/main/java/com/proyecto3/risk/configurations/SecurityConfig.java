@@ -30,6 +30,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/users/register").permitAll()
                         .requestMatchers("/api/users").permitAll()
+                        .requestMatchers("/api/avatars").permitAll()
+                        .requestMatchers("/api/avatars/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()
                         .requestMatchers("/api/login").permitAll()
                         // Protected endpoints - require authentication
