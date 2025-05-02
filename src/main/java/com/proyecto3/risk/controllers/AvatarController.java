@@ -1,10 +1,9 @@
 package com.proyecto3.risk.controllers;
 
 import com.proyecto3.risk.exceptions.AvatarException;
-import com.proyecto3.risk.model.Avatars;
+import com.proyecto3.risk.model.entities.Avatars;
 import com.proyecto3.risk.service.AvatarService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,7 +27,7 @@ public class AvatarController {
         }
 
 
-        return avatarService.GetAllAvatars();
+        return listOfAvatars;
     }
 
     @GetMapping("/avatars/{name}")
