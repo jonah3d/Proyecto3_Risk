@@ -46,15 +46,17 @@ public class UseServiceImp implements UserService{
     }
 
     @Override
+    @Transactional
     public void CreateUser(User user) {
         if (user == null) {
             throw new IllegalArgumentException("User object cannot be null");
         }
 
-      /*  if (userRepository.findUserByUsername(user.getUsername()) != null) {
+
+        if (userRepository.findUserByUsername(user.getUsername()) != null) {
             System.out.println("Attempted to create a user with existing username: {}"+ user.getUsername());
             throw new IllegalStateException("Username already exists");
-        }*/
+        }
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);

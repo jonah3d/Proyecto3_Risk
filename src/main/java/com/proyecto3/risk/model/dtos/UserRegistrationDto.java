@@ -37,6 +37,9 @@ public class UserRegistrationDto {
     @JsonProperty("avatarId")
     private Integer avatarId;
 
+    public UserRegistrationDto() {
+    }
+
     // Getters and setters
     public String getFirstName() {
         return firstName;

@@ -62,6 +62,7 @@ public class User {
     @JsonProperty("games")
     private int games;
 
+
     public User() {}
 
     public Integer getId() {
