@@ -48,7 +48,7 @@ public class UseServiceImp implements UserService{
     @Override
     @Transactional
     public void CreateUser(User user) {
-        if (user == null) {
+    /*    if (user == null) {
             throw new IllegalArgumentException("User object cannot be null");
         }
 
@@ -60,7 +60,11 @@ public class UseServiceImp implements UserService{
 
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
-        System.out.println("User created: {}" + user.getUsername());
+        System.out.println("User created: {}" + user.getUsername());*/
+
+        user.setId(null); // just in case it's set from outside
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+         userRepository.save(user); // should insert, not update
     }
 
     @Override
