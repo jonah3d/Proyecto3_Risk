@@ -75,11 +75,13 @@ public class UseServiceImp implements UserService{
         existingUser.setFirstName(newUserData.getFirstName());
         existingUser.setLastName(newUserData.getLastName());
         existingUser.setEmail(newUserData.getEmail());
-        existingUser.setUsername(newUserData.getUsername());
         existingUser.setAvatar(newUserData.getAvatar());
+        existingUser.setPassword(passwordEncoder.encode(newUserData.getPassword()));
+        // if you add password handling
 
         return userRepository.save(existingUser);
     }
+
 
 
     @Override
