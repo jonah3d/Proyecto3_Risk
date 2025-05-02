@@ -63,7 +63,7 @@ public class UserController {
     }
 
     // This endpoint requires authentication and checks if the authenticated user
-    // is the same as the one being updated
+    // is the same as the one being updated yes
     @PutMapping("/update/{username}")
     @IsSameUser
     public ResponseEntity<?> updateUser(@PathVariable String username,
