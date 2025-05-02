@@ -1,6 +1,10 @@
 package com.proyecto3.risk.controllers.sessioncontrollers;
 
 import com.proyecto3.risk.model.dtos.LoginRequestDto;
+import com.proyecto3.risk.model.dtos.UserResponseDto;
+import com.proyecto3.risk.model.entities.User;
+import com.proyecto3.risk.service.UserService;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +22,12 @@ public class LoginController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private ModelMapper modelMapper;
+
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDto loginRequest) {
@@ -27,7 +37,16 @@ public class LoginController {
            );
 
            if (auth.isAuthenticated()) {
-               return ResponseEntity.ok("Login successful");
+
+                // Here you can return the user details or any other information you want
+               User user = userService.getUserByUserName(loginRequest.getUsername());
+
+                if (user == null) {
+                     return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
+                }
+
+               UserResponseDto responseDto = modelMapper.map(user, UserResponseDto.class);
+               return new ResponseEntity<>(responseDto, HttpStatus.OK);
            } else {
                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
            }
