@@ -1,10 +1,9 @@
 package com.proyecto3.risk.configurations;
 
-import com.proyecto3.risk.model.dtos.AvatarResponseDto;
-import com.proyecto3.risk.model.dtos.UpdateUserDto;
-import com.proyecto3.risk.model.dtos.UserRegistrationDto;
-import com.proyecto3.risk.model.dtos.UserResponseDto;
+import com.proyecto3.risk.model.dtos.*;
 import com.proyecto3.risk.model.entities.Avatars;
+import com.proyecto3.risk.model.entities.Continent;
+import com.proyecto3.risk.model.entities.Country;
 import com.proyecto3.risk.model.entities.User;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.PropertyMap;
@@ -48,6 +47,21 @@ public class MapperConfig {
             }
         });
 
+
+        mapper.addMappings(new PropertyMap<Country, CountryResponseDto>() {
+            @Override
+            protected void configure() {
+
+            }
+        });
+
+
+        mapper.addMappings(new PropertyMap<Continent, ContinentResponseDto>() {
+            @Override
+            protected void configure() {
+
+            }
+        });
 
         return mapper;
     }

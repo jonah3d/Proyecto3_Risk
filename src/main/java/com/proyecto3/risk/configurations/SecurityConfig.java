@@ -34,6 +34,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/avatars/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()
                         .requestMatchers("/api/login").permitAll()
+                        .requestMatchers("/api/countries").permitAll()
+                        .requestMatchers("/api/countries/**").permitAll()
+                        .requestMatchers("/api/continents").permitAll()
+                        .requestMatchers("/api/continents/**").permitAll()
+
                         // Protected endpoints - require authentication
                         .requestMatchers("/api/users/update/**").authenticated()
                         .requestMatchers("/api/users/delete/**").authenticated()
