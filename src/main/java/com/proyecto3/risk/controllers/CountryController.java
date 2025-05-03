@@ -52,11 +52,25 @@ public class CountryController {
 
         var country = countryService.getCountryByName(name);
         if (country == null) {
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
         CountryResponseDto countryResponseDto = modelMapper.map(country, CountryResponseDto.class);
 
         return new ResponseEntity<>(countryResponseDto, HttpStatus.OK);
     }
+
+    @GetMapping("/countries/id/{id}")
+    public ResponseEntity<CountryResponseDto> getCountryById(@PathVariable Long id) {
+
+        var country = countryService.getCountryById(id);
+        if (country == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        CountryResponseDto countryResponseDto = modelMapper.map(country, CountryResponseDto.class);
+        return new ResponseEntity<>(countryResponseDto, HttpStatus.OK);
+    }
+
+    //@GetMapping("/countries/{name}/neighbors")
 }

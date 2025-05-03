@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/countries/**").permitAll()
                         .requestMatchers("/api/continents").permitAll()
                         .requestMatchers("/api/continents/**").permitAll()
+                        .requestMatchers("/api/borders").permitAll()
+                        .requestMatchers("/api/border/**").permitAll()
 
                         // Protected endpoints - require authentication
                         .requestMatchers("/api/users/update/**").authenticated()

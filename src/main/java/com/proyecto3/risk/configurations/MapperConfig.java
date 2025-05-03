@@ -1,10 +1,7 @@
 package com.proyecto3.risk.configurations;
 
 import com.proyecto3.risk.model.dtos.*;
-import com.proyecto3.risk.model.entities.Avatars;
-import com.proyecto3.risk.model.entities.Continent;
-import com.proyecto3.risk.model.entities.Country;
-import com.proyecto3.risk.model.entities.User;
+import com.proyecto3.risk.model.entities.*;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.PropertyMap;
 import org.springframework.context.annotation.Bean;
@@ -60,6 +57,15 @@ public class MapperConfig {
             @Override
             protected void configure() {
 
+            }
+        });
+
+        // Add Border to BorderResponseDto mapping
+        mapper.addMappings(new PropertyMap<Border, BorderResponseDto>() {
+            @Override
+            protected void configure() {
+              //  map().setCountry1(modelMapper().map(source.getCountry1(), CountryResponseDto.class));
+              //  map().setCountry2(modelMapper().map(source.getCountry2(), CountryResponseDto.class));
             }
         });
 
