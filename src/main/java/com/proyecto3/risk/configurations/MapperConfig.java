@@ -60,6 +60,25 @@ public class MapperConfig {
             }
         });
 
+
+        mapper.addMappings(new PropertyMap<Card, CardResponseDto>() {
+            @Override
+            protected void configure() {
+                map().setId(source.getId());
+                map().setImage(source.getImage());
+                using(ctx -> {
+                    CardType ct = ((Card) ctx.getSource()).getCTypes();
+                    return ct != null ? ct.getId() : null;
+                }).map(source, destination.getcType());
+
+                using(ctx -> {
+                    Country country = ((Card) ctx.getSource()).getCountry();
+                    return country != null ? country.getId() : null;
+                }).map(source, destination.getCountryId());
+            }
+        });
+
+
         // Add Border to BorderResponseDto mapping
         mapper.addMappings(new PropertyMap<Border, BorderResponseDto>() {
             @Override
