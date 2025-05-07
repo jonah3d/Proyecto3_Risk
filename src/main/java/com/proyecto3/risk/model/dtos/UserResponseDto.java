@@ -6,7 +6,11 @@ public class UserResponseDto {
     private String lastName;
     private String username;
     private String email;
+    private int wins;
+    private int games;
     private AvatarResponseDto avatar; // A nested DTO for the avatar
+
+
 
     // Getters and setters
     public Integer getId() { return id; }
@@ -21,4 +25,20 @@ public class UserResponseDto {
     public void setEmail(String email) { this.email = email; }
     public AvatarResponseDto getAvatar() { return avatar; }
     public void setAvatar(AvatarResponseDto avatar) { this.avatar = avatar; }
+
+    public int getGames() {
+        return games;
+    }
+
+    public void setGames(int games) {
+        this.games = games;
+    }
+
+    public int getWins() {
+        return wins;
+    }
+
+    public void setWins(int wins) {
+        this.wins = wins;
+    }
 }

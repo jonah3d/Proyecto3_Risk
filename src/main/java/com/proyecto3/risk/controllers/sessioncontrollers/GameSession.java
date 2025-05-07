@@ -50,10 +50,10 @@ public class GameSession {
         }
         players.put(playerSession.getPlayer().getId(), playerSession);
 
-        // Notify all players about the new player
+
         broadcastPlayerList();
 
-        // Start the game if we've reached max players
+
         if (players.size() >= maxPlayers) {
             startGame();
         }
@@ -64,18 +64,18 @@ public class GameSession {
     public synchronized boolean removePlayer(Long playerId) {
         PlayerSession removed = players.remove(playerId);
         if (removed != null) {
-            // If game was in progress, handle player disconnection
+
             if (state == GameState.PLAYING) {
                 // Handle game-specific logic for player disconnection
             }
 
-            // If no players left, end the game
+
             if (players.isEmpty()) {
                 endGame();
                 return true;
             }
 
-            // Otherwise, notify remaining players
+
             broadcastPlayerList();
             return true;
         }
@@ -99,7 +99,7 @@ public class GameSession {
         gameStartMessage.put("action", "game_started");
         broadcast(gameStartMessage);
 
-        // Start the game loop in a separate thread
+
         gameThread = new Thread(this::runGameLoop);
         gameThread.start();
     }
@@ -111,7 +111,7 @@ public class GameSession {
             while (state == GameState.PLAYING) {
                 // Game update tick
                 // Process game events
-                Thread.sleep(100); // Adjust as needed
+                Thread.sleep(100);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -127,12 +127,12 @@ public class GameSession {
 
         state = GameState.FINISHED;
 
-        // Notify all players that the game has ended
+
         Map<String, Object> gameEndMessage = new HashMap<>();
         gameEndMessage.put("action", "game_ended");
         broadcast(gameEndMessage);
 
-        // Stop the game thread if it's running
+
         if (gameThread != null && gameThread.isAlive()) {
             gameThread.interrupt();
         }

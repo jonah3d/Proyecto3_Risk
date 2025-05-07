@@ -16,18 +16,18 @@ public class GameManager {
 
     public String createGame(PlayerSession hostSession, int maxPlayers, boolean isPublic) {
         String gameId = isPublic ?
-                UUID.randomUUID().toString().substring(0, 8) : // Shorter ID for public games
-                UUID.randomUUID().toString(); // Full UUID for private games
+                UUID.randomUUID().toString().substring(0, 8) :
+                UUID.randomUUID().toString();
 
         System.out.println(gameId);
 
         GameSession session = new GameSession(gameId, maxPlayers, isPublic);
         games.put(gameId, session);
 
-        // Add the host to the game
+
         boolean added = session.addPlayer(hostSession);
         if (!added) {
-            // This shouldn't happen for a new game, but just in case
+
             games.remove(gameId);
             return null;
         }
@@ -49,7 +49,7 @@ public class GameManager {
         if (game != null) {
             boolean removed = game.removePlayer(playerId);
 
-            // If the game is now empty, remove it
+
             if (removed && game.getCurrentPlayerCount() == 0) {
                 games.remove(gameId);
             }
