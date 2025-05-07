@@ -3,7 +3,6 @@ package com.proyecto3.risk.controllers.sessioncontrollers;
 
 import com.nimbusds.jose.shaded.gson.Gson;
 import com.nimbusds.jose.shaded.gson.JsonObject;
-import com.proyecto3.risk.model.entities.Player;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -12,9 +11,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class GameSession {
-    private final String gameId;
+    private final String token;
     private final int maxPlayers;
     private final boolean isPublic;
+    private final Long id;
     private final String gameName;
     private final Map<Long, PlayerSession> players = new ConcurrentHashMap<>();
     private GameState state = GameState.WAITING;
@@ -26,15 +26,24 @@ public class GameSession {
         FINISHED
     }
 
-    public GameSession(String gameId, int maxPlayers, boolean isPublic, String gameName) {
-        this.gameId = gameId;
+    public GameSession(String token, int maxPlayers, boolean isPublic,  String gameName,Long id) {
+        this.token = token;
         this.maxPlayers = maxPlayers;
         this.isPublic = isPublic;
+        this.id = id;
         this.gameName = gameName;
     }
 
-    public String getGameId() {
-        return gameId;
+    public String getToken() {
+        return token;
+    }
+
+    public String getGameName() {
+        return gameName;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public boolean isPublic() {

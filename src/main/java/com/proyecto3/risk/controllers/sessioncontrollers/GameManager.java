@@ -1,9 +1,7 @@
 package com.proyecto3.risk.controllers.sessioncontrollers;
 
-import com.nimbusds.jose.shaded.gson.Gson;
 import com.nimbusds.jose.shaded.gson.JsonObject;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.WebSocketSession;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,28 +13,36 @@ public class GameManager {
     private final Map<String, GameSession> games = new ConcurrentHashMap<>();
 
     public String createGame(PlayerSession hostSession, int maxPlayers, boolean isPublic,String gameName) {
-        String gameId = isPublic ?
+        String token = isPublic ?
                 UUID.randomUUID().toString().substring(0, 8) :
                 UUID.randomUUID().toString();
 
-        System.out.println(gameId);
+        long gameId = 10000 + Math.abs(UUID.randomUUID().getLeastSignificantBits() % 90000);
 
-        GameSession session = new GameSession(gameId, maxPlayers, isPublic,gameName);
-        games.put(gameId, session);
+
+        System.out.println(token);
+
+        GameSession session = new GameSession(token, maxPlayers, isPublic,gameName,gameId);
+        games.put(token, session);
 
 
         boolean added = session.addPlayer(hostSession);
         if (!added) {
 
-            games.remove(gameId);
+            games.remove(token);
             return null;
         }
 
-        return gameId;
+        return token;
     }
 
-    public boolean joinGame(String gameId, PlayerSession playerSession) {
-        GameSession game = games.get(gameId);
+    public Long getGameId(String token) {
+        GameSession session = games.get(token);
+        return session.getId();
+    }
+
+    public boolean joinGame(String token, PlayerSession playerSession) {
+        GameSession game = games.get(token);
         if (game == null) {
             return false;
         }
@@ -44,20 +50,20 @@ public class GameManager {
         return game.addPlayer(playerSession);
     }
 
-    public void leaveGame(String gameId, Long playerId) {
-        GameSession game = games.get(gameId);
+    public void leaveGame(String token, Long playerId) {
+        GameSession game = games.get(token);
         if (game != null) {
             boolean removed = game.removePlayer(playerId);
 
 
             if (removed && game.getCurrentPlayerCount() == 0) {
-                games.remove(gameId);
+                games.remove(token);
             }
         }
     }
 
-    public void handlePlayerInput(Long playerId, String gameId, JsonObject input) {
-        GameSession game = games.get(gameId);
+    public void handlePlayerInput(Long playerId, String token, JsonObject input) {
+        GameSession game = games.get(token);
         if (game != null && game.hasPlayer(playerId)) {
             game.handlePlayerInput(playerId, input);
         }
@@ -70,7 +76,8 @@ public class GameManager {
                 .filter(game -> !game.isFull())
                 .map(game -> {
                     Map<String, Object> gameInfo = new HashMap<>();
-                    gameInfo.put("id", game.getGameId());
+                    gameInfo.put("id", game.getId());
+                    gameInfo.put("token", game.getToken());
                     gameInfo.put("players", game.getCurrentPlayerCount());
                     gameInfo.put("maxPlayers", game.getMaxPlayers());
                     return gameInfo;
@@ -78,8 +85,8 @@ public class GameManager {
                 .collect(Collectors.toList());
     }
 
-    public GameSession getGame(String gameId) {
-        return games.get(gameId);
+    public GameSession getGame(String token) {
+        return games.get(token);
     }
 
     public GameSession findGameForPlayer(Long playerId) {

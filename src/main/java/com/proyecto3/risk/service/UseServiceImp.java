@@ -7,7 +7,6 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.util.logging.*;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -83,8 +82,6 @@ public class UseServiceImp implements UserService{
         return userRepository.save(existingUser);
     }
 
-
-
     @Override
     public void deleteUser(String username, String password) {
         User user = userRepository.findUserByUsername(username);
@@ -93,5 +90,19 @@ public class UseServiceImp implements UserService{
             throw new SecurityException("Invalid credentials");
         }
         userRepository.delete(user);
+    }
+
+    @Override
+    public User getUserById(Long id) {
+
+        if(id == null) {
+            return null;
+        }
+
+       User user =  userRepository.findUserById(id);
+        if(user == null) {
+            throw new NoSuchElementException("User not found");
+        }
+        return user;
     }
 }

@@ -46,6 +46,11 @@ public class Partida {
     @JoinColumn(name = "turn_state", nullable = false)
     private State turnState;
 
+
+    @NotNull
+    @Column(name = "is_public",nullable = false)
+    private int IsPublic;
+
     @OneToMany(mappedBy = "partida")
     private Set<Player> players = new LinkedHashSet<>();
 
@@ -121,4 +126,11 @@ public class Partida {
         this.players = players;
     }
 
+    public int getIsPublic() {
+        return IsPublic;
+    }
+
+    public void setIsPublic(int isPublic) {
+        IsPublic = isPublic;
+    }
 }

@@ -149,4 +149,16 @@ public class UserController {
         UserResponseDto responseDto = modelMapper.map(user, UserResponseDto.class);
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
+
+    @GetMapping("/id/{userId}")
+    public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long userId) {
+        User user = userService.getUserById(userId);
+
+        if (user == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        UserResponseDto responseDto = modelMapper.map(user, UserResponseDto.class);
+        return new ResponseEntity<>(responseDto, HttpStatus.OK);
+    }
 }

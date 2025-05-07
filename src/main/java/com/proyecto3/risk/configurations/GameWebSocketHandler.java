@@ -8,11 +8,17 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
 
     @Autowired
     private GameController gameController;
+
+   // private final Map<String, Integer> sessionUserIds = new ConcurrentHashMap<>();
+
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -21,6 +27,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+     //   sessionUserIds.remove(session.getId());
         gameController.handleDisconnect(session);
     }
 

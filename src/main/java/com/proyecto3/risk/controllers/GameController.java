@@ -9,14 +9,14 @@ import com.proyecto3.risk.controllers.sessioncontrollers.GameSession;
 import com.proyecto3.risk.controllers.sessioncontrollers.PlayerSession;
 import com.proyecto3.risk.controllers.sessioncontrollers.SessionManager;
 import com.proyecto3.risk.model.entities.Player;
+import com.proyecto3.risk.model.entities.User;
+import com.proyecto3.risk.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Component
 public class GameController {
@@ -26,6 +26,9 @@ public class GameController {
 
     @Autowired
     private GameManager gameManager;
+
+    @Autowired
+    private UserService userService;
 
     private final Gson gson = new Gson();
 
@@ -46,7 +49,7 @@ public class GameController {
 
             GameSession game = gameManager.findGameForPlayer(player.getId());
             if (game != null) {
-                gameManager.leaveGame(game.getGameId(), player.getId());
+                gameManager.leaveGame(game.getToken(), player.getId());
             }
         }
 
@@ -95,23 +98,26 @@ public class GameController {
     }
 
     private void handleRegister(WebSocketSession session, JsonObject json) {
-        if (!json.has("name")) {
-            sendError(session, "Missing 'name' field for registration");
-            return;
+
+
+      //  String playerName = json.get("name").getAsString();
+        Long playerId = json.get("userId").getAsLong();
+
+        User playerUser = userService.getUserById(playerId);
+        if (playerUser == null) {
+            sendError(session,"Id of player during registration didnt match any user in the db");
         }
 
-        String playerName = json.get("name").getAsString();
-        Long playerId = json.get("userId").getAsLong();
         Player player = new Player();
+        player.setUser(playerUser);
+
         player.setId(playerId);
-        //player.setName(playerName);
         sessionManager.registerPlayer(session, player);
 
         Map<String, Object> response = new HashMap<>();
         response.put("action", "registered");
         response.put("playerId", player.getId());
-        response.put("playerName", playerName);
-      //  response.put("playerName", player.getUser().getUsername());
+        response.put("playerName", playerUser.getUsername());
 
         sessionManager.sendJsonMessage(session, response);
     }
@@ -140,12 +146,13 @@ public class GameController {
         }
 
         PlayerSession playerSession = new PlayerSession(player, session);
-        String gameId = gameManager.createGame(playerSession, maxPlayers, isPublic, gameName);
+        String token = gameManager.createGame(playerSession, maxPlayers, isPublic, gameName);
 
-        if (gameId != null) {
+        if (token != null) {
             Map<String, Object> response = new HashMap<>();
             response.put("action", "game_created");
-            response.put("gameId", gameId);
+            response.put("id", gameManager.getGameId(token));
+            response.put("token", token);
             response.put("isPublic", isPublic);
             response.put("maxPlayers", maxPlayers);
             response.put("gameName", gameName);
@@ -192,11 +199,11 @@ public class GameController {
 
         GameSession game = gameManager.findGameForPlayer(player.getId());
         if (game != null) {
-            gameManager.leaveGame(game.getGameId(), player.getId());
+            gameManager.leaveGame(game.getToken(), player.getId());
 
             Map<String, Object> response = new HashMap<>();
             response.put("action", "left_game");
-            response.put("gameId", game.getGameId());
+            response.put("gameId", game.getToken());
 
             sessionManager.sendJsonMessage(session, response);
         } else {
@@ -231,7 +238,7 @@ public class GameController {
         }
 
         JsonObject inputData = json.get("data").getAsJsonObject();
-        gameManager.handlePlayerInput(player.getId(), game.getGameId(), inputData);
+        gameManager.handlePlayerInput(player.getId(), game.getToken(), inputData);
     }
 
     private void sendError(WebSocketSession session, String message) {
