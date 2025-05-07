@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/border/**").permitAll()
                         .requestMatchers("/api/cards").permitAll()
                         .requestMatchers("/api/cards/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
 
                         // Protected endpoints - require authentication
                         .requestMatchers("/api/users/update/**").authenticated()
