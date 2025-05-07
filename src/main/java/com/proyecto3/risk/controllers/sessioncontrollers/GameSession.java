@@ -88,6 +88,7 @@ public class GameSession {
 
 
             broadcastPlayerList();
+            broadcast("Player " + playerId + " left the game");
             return true;
         }
         return false;

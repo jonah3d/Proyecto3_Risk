@@ -170,12 +170,12 @@ public class GameController {
             return;
         }
 
-        if (!json.has("gameId")) {
-            sendError(session, "Missing 'gameId' field");
+        if (!json.has("token")) {
+            sendError(session, "Missing 'token' field");
             return;
         }
 
-        String gameId = json.get("gameId").getAsString();
+        String gameId = json.get("token").getAsString();
         PlayerSession playerSession = new PlayerSession(player, session);
 
         boolean joined = gameManager.joinGame(gameId, playerSession);
@@ -183,7 +183,7 @@ public class GameController {
         if (joined) {
             Map<String, Object> response = new HashMap<>();
             response.put("action", "joined_game");
-            response.put("gameId", gameId);
+            response.put("token", gameId);
 
             sessionManager.sendJsonMessage(session, response);
         } else {
@@ -194,7 +194,7 @@ public class GameController {
     private void handleLeaveGame(WebSocketSession session, JsonObject json) {
         Player player = sessionManager.getPlayer(session);
         if (player == null) {
-            return; // Already not registered
+            return;
         }
 
         GameSession game = gameManager.findGameForPlayer(player.getId());
@@ -203,7 +203,7 @@ public class GameController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("action", "left_game");
-            response.put("gameId", game.getToken());
+            response.put("token", game.getToken());
 
             sessionManager.sendJsonMessage(session, response);
         } else {
