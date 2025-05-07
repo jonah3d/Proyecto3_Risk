@@ -15,6 +15,7 @@ public class GameSession {
     private final String gameId;
     private final int maxPlayers;
     private final boolean isPublic;
+    private final String gameName;
     private final Map<Long, PlayerSession> players = new ConcurrentHashMap<>();
     private GameState state = GameState.WAITING;
     private Thread gameThread;
@@ -25,10 +26,11 @@ public class GameSession {
         FINISHED
     }
 
-    public GameSession(String gameId, int maxPlayers, boolean isPublic) {
+    public GameSession(String gameId, int maxPlayers, boolean isPublic, String gameName) {
         this.gameId = gameId;
         this.maxPlayers = maxPlayers;
         this.isPublic = isPublic;
+        this.gameName = gameName;
     }
 
     public String getGameId() {

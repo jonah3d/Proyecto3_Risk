@@ -131,13 +131,16 @@ public class GameController {
         int maxPlayers = json.get("maxPlayers").getAsInt();
         boolean isPublic = json.has("isPublic") && json.get("isPublic").getAsBoolean();
 
+        String gameName = json.get("gameName").getAsString();
+
+
         if (maxPlayers < 2 || maxPlayers > 10) {
             sendError(session, "maxPlayers must be between 2 and 10");
             return;
         }
 
         PlayerSession playerSession = new PlayerSession(player, session);
-        String gameId = gameManager.createGame(playerSession, maxPlayers, isPublic);
+        String gameId = gameManager.createGame(playerSession, maxPlayers, isPublic, gameName);
 
         if (gameId != null) {
             Map<String, Object> response = new HashMap<>();
@@ -145,6 +148,7 @@ public class GameController {
             response.put("gameId", gameId);
             response.put("isPublic", isPublic);
             response.put("maxPlayers", maxPlayers);
+            response.put("gameName", gameName);
 
             sessionManager.sendJsonMessage(session, response);
         } else {

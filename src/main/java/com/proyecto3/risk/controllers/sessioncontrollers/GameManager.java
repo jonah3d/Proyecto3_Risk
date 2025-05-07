@@ -14,14 +14,14 @@ import java.util.stream.Collectors;
 public class GameManager {
     private final Map<String, GameSession> games = new ConcurrentHashMap<>();
 
-    public String createGame(PlayerSession hostSession, int maxPlayers, boolean isPublic) {
+    public String createGame(PlayerSession hostSession, int maxPlayers, boolean isPublic,String gameName) {
         String gameId = isPublic ?
                 UUID.randomUUID().toString().substring(0, 8) :
                 UUID.randomUUID().toString();
 
         System.out.println(gameId);
 
-        GameSession session = new GameSession(gameId, maxPlayers, isPublic);
+        GameSession session = new GameSession(gameId, maxPlayers, isPublic,gameName);
         games.put(gameId, session);
 
 
