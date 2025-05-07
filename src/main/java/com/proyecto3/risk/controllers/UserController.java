@@ -41,17 +41,19 @@ public class UserController {
             // Get Avatar
             Avatars avatar = avatarService.GetAvatarById(registrationDto.getAvatarId());
             if (avatar == null) {
-                return new ResponseEntity<>("Avatar not found with ID: " + registrationDto.getAvatarId(),
-                        HttpStatus.BAD_REQUEST);
+                return ResponseEntity.status(HttpStatus.NO_CONTENT).body("No Avatar");
             }
 
             // Map and assign avatar
             User user = modelMapper.map(registrationDto, User.class);
             user.setAvatar(avatar);
 
+
             // Save
             userService.CreateUser(user);
-            return new ResponseEntity<>("User registered successfully", HttpStatus.CREATED);
+            UserResponseDto responseDto = modelMapper.map(user, UserResponseDto.class);
+
+            return new ResponseEntity<>(responseDto, HttpStatus.CREATED);
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
