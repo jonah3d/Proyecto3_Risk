@@ -44,8 +44,11 @@ public class GameSession {
             return false;
         }
 
-        Player player = playerSession.getPlayer();
-        players.put(player.getId(), playerSession);
+        //Player player = playerSession.getPlayer();
+        if (playerSession == null || playerSession.getPlayer() == null || playerSession.getPlayer().getId() == null) {
+            return false;
+        }
+        players.put(playerSession.getPlayer().getId(), playerSession);
 
         // Notify all players about the new player
         broadcastPlayerList();

@@ -16,6 +16,7 @@ import org.springframework.web.socket.WebSocketSession;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class GameController {
@@ -31,7 +32,7 @@ public class GameController {
     public void handleConnect(WebSocketSession session) {
         sessionManager.registerSession(session);
 
-        // Send welcome message
+
         Map<String, Object> welcome = new HashMap<>();
         welcome.put("action", "connected");
         welcome.put("sessionId", session.getId());
@@ -42,7 +43,7 @@ public class GameController {
         Player player = sessionManager.getPlayer(session);
 
         if (player != null) {
-            // Find if player is in a game and remove them
+
             GameSession game = gameManager.findGameForPlayer(player.getId());
             if (game != null) {
                 gameManager.leaveGame(game.getGameId(), player.getId());
@@ -100,7 +101,10 @@ public class GameController {
         }
 
         String playerName = json.get("name").getAsString();
+        Long playerId = json.get("userId").getAsLong();
         Player player = new Player();
+        player.setId(playerId);
+        //player.setName(playerName);
         sessionManager.registerPlayer(session, player);
 
         Map<String, Object> response = new HashMap<>();
