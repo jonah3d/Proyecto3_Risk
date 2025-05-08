@@ -111,7 +111,7 @@ public class GameSession {
         gameStartMessage.put("action", "game_started");
         broadcast(gameStartMessage);
 
-
+        chooseInitialPlayer();
         gameThread = new Thread(this::runGameLoop);
         gameThread.start();
     }
@@ -155,15 +155,25 @@ public class GameSession {
             return;
         }
 
-        // Process player input based on your game logic
-        // For example:
-        // - Update player position
-        // - Handle player actions
-        // - etc.
+        if (!playerId.equals(currentPlayerId)) {
+            sendToPlayer(playerId.toString(), Map.of(
+                    "action", "error",
+                    "message", "It's not your turn"
+            ));
+            return;
+        }
+        // Example: process input
+    /*    String move = input.get("move").getAsString();
+        System.out.println("Player " + playerId + " made move: " + move);
 
-        // Then broadcast game state updates
+        // Update game state here...
+
+        // Then move to next player's turn*/
+        nextTurn();
+
         broadcastGameState();
     }
+
 
     private void broadcastGameState() {
         // Create a game state update to send to all players
@@ -210,5 +220,33 @@ public class GameSession {
 
     public Collection<PlayerSession> getPlayers() {
         return players.values();
+    }
+        private Long currentPlayerId;
+    private void chooseInitialPlayer() {
+        List<Long> playerIds = new ArrayList<>(players.keySet());
+        if (playerIds.isEmpty()) return;
+
+        Collections.shuffle(playerIds);
+        currentPlayerId = playerIds.get(0);
+
+        Map<String, Object> turnMessage = new HashMap<>();
+        turnMessage.put("action", "player_turn");
+        turnMessage.put("playerId", currentPlayerId);
+        broadcast(turnMessage);
+    }
+
+
+
+    private void nextTurn() {
+        List<Long> playerIds = new ArrayList<>(players.keySet());
+        if (playerIds.isEmpty()) return;
+
+        int index = playerIds.indexOf(currentPlayerId);
+        currentPlayerId = playerIds.get((index + 1) % playerIds.size());
+
+        Map<String, Object> turnMessage = new HashMap<>();
+        turnMessage.put("action", "player_turn");
+        turnMessage.put("playerId", currentPlayerId);
+        broadcast(turnMessage);
     }
 }
