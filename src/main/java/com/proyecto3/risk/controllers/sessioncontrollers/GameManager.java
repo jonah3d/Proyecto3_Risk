@@ -80,6 +80,7 @@ public class GameManager {
                     gameInfo.put("token", game.getToken());
                     gameInfo.put("players", game.getCurrentPlayerCount());
                     gameInfo.put("maxPlayers", game.getMaxPlayers());
+                    gameInfo.put("gameName", game.getGameName());
                     return gameInfo;
                 })
                 .collect(Collectors.toList());
