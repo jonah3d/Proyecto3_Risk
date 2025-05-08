@@ -4,9 +4,7 @@ package com.proyecto3.risk.controllers.sessioncontrollers;
 import com.nimbusds.jose.shaded.gson.Gson;
 import com.nimbusds.jose.shaded.gson.JsonObject;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -77,7 +75,7 @@ public class GameSession {
         if (removed != null) {
 
             if (state == GameState.PLAYING) {
-                // Handle game-specific logic for player disconnection
+
             }
 
 
@@ -111,6 +109,7 @@ public class GameSession {
         gameStartMessage.put("action", "game_started");
         broadcast(gameStartMessage);
 
+
         chooseInitialPlayer();
         gameThread = new Thread(this::runGameLoop);
         gameThread.start();
@@ -118,11 +117,9 @@ public class GameSession {
 
     private void runGameLoop() {
         try {
-            // Your game logic goes here
-            // For example:
+
             while (state == GameState.PLAYING) {
-                // Game update tick
-                // Process game events
+
                 Thread.sleep(100);
             }
         } catch (InterruptedException e) {
@@ -175,6 +172,7 @@ public class GameSession {
     }
 
 
+
     private void broadcastGameState() {
         // Create a game state update to send to all players
         Map<String, Object> gameState = new HashMap<>();
@@ -221,7 +219,9 @@ public class GameSession {
     public Collection<PlayerSession> getPlayers() {
         return players.values();
     }
-        private Long currentPlayerId;
+
+
+    private Long currentPlayerId;
     private void chooseInitialPlayer() {
         List<Long> playerIds = new ArrayList<>(players.keySet());
         if (playerIds.isEmpty()) return;
@@ -249,4 +249,5 @@ public class GameSession {
         turnMessage.put("playerId", currentPlayerId);
         broadcast(turnMessage);
     }
+
 }
