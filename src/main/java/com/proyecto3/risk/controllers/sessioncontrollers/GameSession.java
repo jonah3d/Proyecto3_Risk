@@ -3,6 +3,7 @@ package com.proyecto3.risk.controllers.sessioncontrollers;
 
 import com.nimbusds.jose.shaded.gson.Gson;
 import com.nimbusds.jose.shaded.gson.JsonObject;
+import com.proyecto3.risk.model.entities.Occupy;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,12 +17,20 @@ public class GameSession {
     private final String gameName;
     private final Map<Long, PlayerSession> players = new ConcurrentHashMap<>();
     private GameState state = GameState.WAITING;
+    private GameStage stage;
     private Thread gameThread;
+    private Map<Long, List<Occupy>> occupies = new ConcurrentHashMap<>();
 
     public enum GameState {
         WAITING,
         PLAYING,
         FINISHED
+    }
+
+    public enum GameStage{
+        OCCUPATION,
+        ATTACKING,
+        REFORCE
     }
 
     public GameSession(String token, int maxPlayers, boolean isPublic,  String gameName,Long id) {
@@ -75,6 +84,9 @@ public class GameSession {
         if (removed != null) {
 
             if (state == GameState.PLAYING) {
+                if (playerId.equals(currentPlayerId)) {
+                    nextTurn();
+                }
 
             }
 
@@ -104,6 +116,7 @@ public class GameSession {
 
     private void startGame() {
         state = GameState.PLAYING;
+        stage = GameStage.OCCUPATION;
 
         Map<String, Object> gameStartMessage = new HashMap<>();
         gameStartMessage.put("action", "game_started");
@@ -111,17 +124,36 @@ public class GameSession {
 
 
         chooseInitialPlayer();
-        gameThread = new Thread(this::runGameLoop);
-        gameThread.start();
+        if (gameThread == null || !gameThread.isAlive()) {
+            gameThread = new Thread(this::runGameLoop);
+            gameThread.start();
+        }
+
+    }
+
+    private void startOccupation() {
+        stage = GameStage.OCCUPATION;
     }
 
     private void runGameLoop() {
         try {
 
             while (state == GameState.PLAYING) {
+                switch (stage) {
+                    case OCCUPATION:
+                        // handle occupation logic
+                        break;
+                    case ATTACKING:
+                        // handle attacking logic
+                        break;
+                    case REFORCE:
+                        // handle reforce logic
+                        break;
+                }
 
                 Thread.sleep(100);
             }
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
@@ -153,23 +185,66 @@ public class GameSession {
         }
 
         if (!playerId.equals(currentPlayerId)) {
-            sendToPlayer(playerId.toString(), Map.of(
+            sendToPlayer(playerId, Map.of(
                     "action", "error",
                     "message", "It's not your turn"
             ));
             return;
         }
-        // Example: process input
-    /*    String move = input.get("move").getAsString();
-        System.out.println("Player " + playerId + " made move: " + move);
 
-        // Update game state here...
+        if (stage == GameStage.OCCUPATION) {
+            handleOccupationInput(playerId, input);
+            return;
+        }
 
-        // Then move to next player's turn*/
-        nextTurn();
+       // nextTurn();
 
         broadcastGameState();
     }
+
+    private void handleOccupationInput(Long playerId, JsonObject input) {
+        if (!input.has("countryId")) {
+            sendToPlayer(playerId, Map.of(
+                    "action", "error",
+                    "message", "Missing 'countryId' for occupation"
+            ));
+            return;
+        }
+
+        long countryId = input.get("countryId").getAsLong();
+        int numoftroops = input.get("troops").getAsInt();
+
+        // Optional: Check if the territory is already occupied
+        boolean alreadyOccupied = occupies.values().stream()
+                .flatMap(List::stream)
+                .anyMatch(o -> o.getCountryId() == countryId);
+
+        if (alreadyOccupied) {
+            sendToPlayer(playerId, Map.of(
+                    "action", "error",
+                    "message", "Territory already occupied"
+            ));
+            return;
+        }
+
+        // Store the occupation
+        occupies.computeIfAbsent(playerId, k -> new ArrayList<>())
+                .add(new Occupy(playerId, countryId,numoftroops));
+
+        // Broadcast the occupation to all players
+        Map<String, Object> occupationUpdate = new HashMap<>();
+        occupationUpdate.put("action", "territory_occupied");
+        occupationUpdate.put("playerId", playerId);
+        occupationUpdate.put("territoryId", countryId);
+        occupationUpdate.put("troops", numoftroops);
+
+        broadcast(occupationUpdate);
+
+        // Next player's turn
+        nextTurn();
+    }
+
+
 
 
 
@@ -189,12 +264,13 @@ public class GameSession {
         }
     }
 
-    public void sendToPlayer(String playerId, Object message) {
+    public void sendToPlayer(Long playerId, Object message) {
         PlayerSession playerSession = players.get(playerId);
         if (playerSession != null) {
             playerSession.sendJsonMessage(message);
         }
     }
+
 
     public boolean hasPlayer(Long playerId) {
         return players.containsKey(playerId);

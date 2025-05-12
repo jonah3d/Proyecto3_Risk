@@ -33,6 +33,15 @@ public class Occupy {
     @Column(name = "troops", nullable = false)
     private Integer troops;
 
+    public Occupy() {
+    }
+
+    public Occupy(Long playerId, Long countryId, Integer troops) {
+        this.countryId = countryId;
+        this.playerId = playerId;
+        this.troops = troops;
+    }
+
     public Long getCountryId() {
         return countryId;
     }
