@@ -99,6 +99,7 @@ public class GameSession {
 
             broadcastPlayerList();
             broadcast("Player " + playerId + " left the game");
+            nextTurn();
             return true;
         }
         return false;
