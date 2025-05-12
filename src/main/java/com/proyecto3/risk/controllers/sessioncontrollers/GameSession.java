@@ -27,13 +27,13 @@ public class GameSession {
         FINISHED
     }
 
-    public enum GameStage{
+    public enum GameStage {
         OCCUPATION,
         ATTACKING,
         REFORCE
     }
 
-    public GameSession(String token, int maxPlayers, boolean isPublic,  String gameName,Long id) {
+    public GameSession(String token, int maxPlayers, boolean isPublic, String gameName, Long id) {
         this.token = token;
         this.maxPlayers = maxPlayers;
         this.isPublic = isPublic;
@@ -98,7 +98,12 @@ public class GameSession {
 
 
             broadcastPlayerList();
-            broadcast("Player " + playerId + " left the game");
+
+            Map<String,Object> leavePlayers = new HashMap<>();
+            leavePlayers.put("action","player_left");
+            leavePlayers.put("player_id",playerId);
+
+            broadcast(leavePlayers);
             nextTurn();
             return true;
         }
@@ -142,7 +147,8 @@ public class GameSession {
             while (state == GameState.PLAYING) {
                 switch (stage) {
                     case OCCUPATION:
-                        // handle occupation logic
+                        int troops_num = calculateNumOfTroops(maxPlayers);
+
                         break;
                     case ATTACKING:
                         // handle attacking logic
@@ -198,7 +204,7 @@ public class GameSession {
             return;
         }
 
-       // nextTurn();
+
 
         broadcastGameState();
     }
@@ -215,7 +221,7 @@ public class GameSession {
         long countryId = input.get("countryId").getAsLong();
         int numoftroops = input.get("troops").getAsInt();
 
-        // Optional: Check if the territory is already occupied
+
         boolean alreadyOccupied = occupies.values().stream()
                 .flatMap(List::stream)
                 .anyMatch(o -> o.getCountryId() == countryId);
@@ -228,11 +234,11 @@ public class GameSession {
             return;
         }
 
-        // Store the occupation
-        occupies.computeIfAbsent(playerId, k -> new ArrayList<>())
-                .add(new Occupy(playerId, countryId,numoftroops));
 
-        // Broadcast the occupation to all players
+        occupies.computeIfAbsent(playerId, k -> new ArrayList<>())
+                .add(new Occupy(playerId, countryId, numoftroops));
+
+
         Map<String, Object> occupationUpdate = new HashMap<>();
         occupationUpdate.put("action", "territory_occupied");
         occupationUpdate.put("playerId", playerId);
@@ -241,10 +247,39 @@ public class GameSession {
 
         broadcast(occupationUpdate);
 
-        // Next player's turn
+
         nextTurn();
     }
 
+    private void sendMapUpdate() {
+        Map<Long, Integer> countryTroopMap = new HashMap<>();
+
+        // Aggregate troops per country
+        for (List<Occupy> occupyList : occupies.values()) {
+            for (Occupy occupy : occupyList) {
+                long countryId = occupy.getCountryId();
+                int troops = occupy.getTroops();
+
+                countryTroopMap.merge(countryId, troops, Integer::sum);
+            }
+        }
+
+
+        List<Map<String, Object>> countryTroopsList = new ArrayList<>();
+        for (Map.Entry<Long, Integer> entry : countryTroopMap.entrySet()) {
+            Map<String, Object> countryInfo = new HashMap<>();
+            countryInfo.put("countryId", entry.getKey());
+            countryInfo.put("troops", entry.getValue());
+            countryTroopsList.add(countryInfo);
+        }
+
+        // Build and send the message
+        Map<String, Object> message = new HashMap<>();
+        message.put("action", "map_update");
+        message.put("countries", countryTroopsList);
+
+        broadcast(message);
+    }
 
 
 
@@ -299,6 +334,7 @@ public class GameSession {
 
 
     private Long currentPlayerId;
+
     private void chooseInitialPlayer() {
         List<Long> playerIds = new ArrayList<>(players.keySet());
         if (playerIds.isEmpty()) return;
@@ -313,7 +349,6 @@ public class GameSession {
     }
 
 
-
     private void nextTurn() {
         List<Long> playerIds = new ArrayList<>(players.keySet());
         if (playerIds.isEmpty()) return;
@@ -325,6 +360,30 @@ public class GameSession {
         turnMessage.put("action", "player_turn");
         turnMessage.put("playerId", currentPlayerId);
         broadcast(turnMessage);
+    }
+
+    private int calculateNumOfTroops(int maxPlayers) {
+int numOfTroops = 0;
+
+        switch (maxPlayers) {
+            case 2:
+                numOfTroops = 40;
+            break;
+            case 3:
+                numOfTroops = 35;
+            break;
+            case 4:
+                numOfTroops = 30;
+            break;
+            case 5:
+                numOfTroops = 25;
+            break;
+            case 6:
+                numOfTroops = 20;
+            break;
+        }
+
+        return numOfTroops;
     }
 
 }
