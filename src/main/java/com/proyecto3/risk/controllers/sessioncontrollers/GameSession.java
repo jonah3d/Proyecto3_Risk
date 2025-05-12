@@ -3,11 +3,18 @@ package com.proyecto3.risk.controllers.sessioncontrollers;
 
 import com.nimbusds.jose.shaded.gson.Gson;
 import com.nimbusds.jose.shaded.gson.JsonObject;
+import com.proyecto3.risk.model.entities.Country;
 import com.proyecto3.risk.model.entities.Occupy;
+import com.proyecto3.risk.repository.CountryRepository;
+import com.proyecto3.risk.service.CountryService;
+import com.proyecto3.risk.service.CountryServiceImp;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
 
 public class GameSession {
     private final String token;
@@ -19,7 +26,12 @@ public class GameSession {
     private GameState state = GameState.WAITING;
     private GameStage stage;
     private Thread gameThread;
+    List<Country> allCountrys = new ArrayList<>();
     private Map<Long, List<Occupy>> occupies = new ConcurrentHashMap<>();
+    private final Map<Long, Integer> troopsToPlace = new ConcurrentHashMap<>();
+
+
+    private final CountryService countryService;
 
     public enum GameState {
         WAITING,
@@ -33,12 +45,19 @@ public class GameSession {
         REFORCE
     }
 
-    public GameSession(String token, int maxPlayers, boolean isPublic, String gameName, Long id) {
+
+
+    public GameSession(String token, int maxPlayers, boolean isPublic, String gameName, Long id, CountryService countryService) {
         this.token = token;
         this.maxPlayers = maxPlayers;
         this.isPublic = isPublic;
         this.id = id;
         this.gameName = gameName;
+        this.countryService = countryService;
+
+        allCountrys.clear();
+        allCountrys = countryService.getAllCountries();
+
     }
 
     public String getToken() {
@@ -124,18 +143,23 @@ public class GameSession {
         state = GameState.PLAYING;
         stage = GameStage.OCCUPATION;
 
+        int initialTroops = calculateNumOfTroops(maxPlayers);
+        for (Long playerId : players.keySet()) {
+            troopsToPlace.put(playerId, initialTroops);
+        }
+
         Map<String, Object> gameStartMessage = new HashMap<>();
         gameStartMessage.put("action", "game_started");
         broadcast(gameStartMessage);
-
+        sendMapUpdate();
 
         chooseInitialPlayer();
         if (gameThread == null || !gameThread.isAlive()) {
             gameThread = new Thread(this::runGameLoop);
             gameThread.start();
         }
-
     }
+
 
     private void startOccupation() {
         stage = GameStage.OCCUPATION;
@@ -220,6 +244,13 @@ public class GameSession {
 
         long countryId = input.get("countryId").getAsLong();
         int numoftroops = input.get("troops").getAsInt();
+        if(numoftroops!=1){
+            sendToPlayer(playerId, Map.of(
+                    "action", "error",
+                    "message", "You can only place one troop"
+            ));
+            return;
+        }
 
 
         boolean alreadyOccupied = occupies.values().stream()
@@ -239,22 +270,37 @@ public class GameSession {
                 .add(new Occupy(playerId, countryId, numoftroops));
 
 
-        Map<String, Object> occupationUpdate = new HashMap<>();
-        occupationUpdate.put("action", "territory_occupied");
-        occupationUpdate.put("playerId", playerId);
-        occupationUpdate.put("territoryId", countryId);
-        occupationUpdate.put("troops", numoftroops);
-
-        broadcast(occupationUpdate);
+        troopsToPlace.put(playerId, troopsToPlace.get(playerId) - 1);
 
 
-        nextTurn();
+        boolean allDone = troopsToPlace.values().stream().allMatch(t -> t <= 0);
+
+        if (allDone) {
+            stage = GameStage.ATTACKING;
+            broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
+        } else {
+            Map<String, Object> occupationUpdate = new HashMap<>();
+            occupationUpdate.put("action", "territory_occupied");
+            occupationUpdate.put("playerId", playerId);
+            occupationUpdate.put("territoryId", countryId);
+            occupationUpdate.put("troops", numoftroops);
+            broadcast(occupationUpdate);
+            nextTurn();
+        }
+
+
     }
+
 
     private void sendMapUpdate() {
         Map<Long, Integer> countryTroopMap = new HashMap<>();
 
-        // Aggregate troops per country
+        // Initialize all countries with 0 troops
+        for (Country countryId : allCountrys) {
+            countryTroopMap.put(countryId.getId(), 0);
+        }
+
+        // Add troops from occupies map
         for (List<Occupy> occupyList : occupies.values()) {
             for (Occupy occupy : occupyList) {
                 long countryId = occupy.getCountryId();
@@ -264,23 +310,22 @@ public class GameSession {
             }
         }
 
-
-        List<Map<String, Object>> countryTroopsList = new ArrayList<>();
+        // Build list of country troop maps
+        List<Map<String, Object>> countries = new ArrayList<>();
         for (Map.Entry<Long, Integer> entry : countryTroopMap.entrySet()) {
-            Map<String, Object> countryInfo = new HashMap<>();
-            countryInfo.put("countryId", entry.getKey());
-            countryInfo.put("troops", entry.getValue());
-            countryTroopsList.add(countryInfo);
+            Map<String, Object> countryData = new HashMap<>();
+            countryData.put("countryId", entry.getKey());
+            countryData.put("troops", entry.getValue());
+            countries.add(countryData);
         }
 
-        // Build and send the message
+        // Build final message
         Map<String, Object> message = new HashMap<>();
         message.put("action", "map_update");
-        message.put("countries", countryTroopsList);
+        message.put("countries", countries);
 
         broadcast(message);
     }
-
 
 
 
@@ -360,6 +405,8 @@ public class GameSession {
         turnMessage.put("action", "player_turn");
         turnMessage.put("playerId", currentPlayerId);
         broadcast(turnMessage);
+        sendMapUpdate();
+
     }
 
     private int calculateNumOfTroops(int maxPlayers) {
