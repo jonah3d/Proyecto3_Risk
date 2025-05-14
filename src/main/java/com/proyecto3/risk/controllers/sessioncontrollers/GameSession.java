@@ -255,12 +255,12 @@ public class GameSession {
 
         boolean alreadyOccupied = occupies.values().stream()
                 .flatMap(List::stream)
-                .anyMatch(o -> o.getCountryId() == countryId);
+                .anyMatch(o -> o.getCountryId() == countryId && !o.getPlayerId().equals(playerId));
 
         if (alreadyOccupied) {
             sendToPlayer(playerId, Map.of(
                     "action", "error",
-                    "message", "Territory already occupied"
+                    "message", "Territory already occupied by another player"
             ));
             return;
         }
@@ -292,34 +292,48 @@ public class GameSession {
     }
 
 
+
     private void sendMapUpdate() {
         Map<Long, Integer> countryTroopMap = new HashMap<>();
+        Map<Long, Long> countryOwnerMap = new HashMap<>();
 
-        // Initialize all countries with 0 troops
-        for (Country countryId : allCountrys) {
-            countryTroopMap.put(countryId.getId(), 0);
+        // Initialize all countries with zero troops and no owner
+        for (Country country : allCountrys) {
+            countryTroopMap.put(country.getId(), 0);
+            countryOwnerMap.put(country.getId(), null);  // No owner initially
         }
 
-        // Add troops from occupies map
+        // Update the maps with occupation data
         for (List<Occupy> occupyList : occupies.values()) {
             for (Occupy occupy : occupyList) {
                 long countryId = occupy.getCountryId();
                 int troops = occupy.getTroops();
+                long playerId = occupy.getPlayerId();
 
                 countryTroopMap.merge(countryId, troops, Integer::sum);
+                // Set or update the owner of the country
+                countryOwnerMap.put(countryId, playerId);
             }
         }
 
-        // Build list of country troop maps
+        // Create the list of country data to send
         List<Map<String, Object>> countries = new ArrayList<>();
         for (Map.Entry<Long, Integer> entry : countryTroopMap.entrySet()) {
+            Long countryId = entry.getKey();
             Map<String, Object> countryData = new HashMap<>();
-            countryData.put("countryId", entry.getKey());
+            countryData.put("countryId", countryId);
             countryData.put("troops", entry.getValue());
+
+            // Include the player ID who owns this country (may be null if unoccupied)
+            Long ownerId = countryOwnerMap.get(countryId);
+            if (ownerId != null) {
+                countryData.put("playerId", ownerId);
+            }
+
             countries.add(countryData);
         }
 
-        // Build final message
+        // Broadcast the map update to all players
         Map<String, Object> message = new HashMap<>();
         message.put("action", "map_update");
         message.put("countries", countries);
