@@ -33,7 +33,7 @@ public class BorderServiceImp implements BorderService{
 
     @Override
     public List<Border> findByCountryId(Long countryId) {
-        // Use the custom query method from the repository
+
         return borderRepository.findByCountryId(countryId);
     }
 }

@@ -3,9 +3,11 @@ package com.proyecto3.risk.controllers.sessioncontrollers;
 
 import com.nimbusds.jose.shaded.gson.Gson;
 import com.nimbusds.jose.shaded.gson.JsonObject;
+import com.proyecto3.risk.model.entities.Border;
 import com.proyecto3.risk.model.entities.Country;
 import com.proyecto3.risk.model.entities.Occupy;
 import com.proyecto3.risk.repository.CountryRepository;
+import com.proyecto3.risk.service.BorderService;
 import com.proyecto3.risk.service.CountryService;
 import com.proyecto3.risk.service.CountryServiceImp;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +34,7 @@ public class GameSession {
 
 
     private final CountryService countryService;
+    private final BorderService borderService;
 
     public enum GameState {
         WAITING,
@@ -47,13 +50,14 @@ public class GameSession {
 
 
 
-    public GameSession(String token, int maxPlayers, boolean isPublic, String gameName, Long id, CountryService countryService) {
+    public GameSession(String token, int maxPlayers, boolean isPublic, String gameName, Long id, CountryService countryService, BorderService borderService) {
         this.token = token;
         this.maxPlayers = maxPlayers;
         this.isPublic = isPublic;
         this.id = id;
         this.gameName = gameName;
         this.countryService = countryService;
+        this.borderService = borderService;
 
         allCountrys.clear();
         allCountrys = countryService.getAllCountries();
@@ -139,6 +143,7 @@ public class GameSession {
         broadcast(playerListMessage);
     }
 
+
     private void startGame() {
         state = GameState.PLAYING;
         stage = GameStage.OCCUPATION;
@@ -151,9 +156,16 @@ public class GameSession {
         Map<String, Object> gameStartMessage = new HashMap<>();
         gameStartMessage.put("action", "game_started");
         broadcast(gameStartMessage);
-        sendMapUpdate();
 
-        chooseInitialPlayer();
+
+         autoFillTerritories();
+
+
+        if (stage == GameStage.OCCUPATION) {
+            sendMapUpdate();
+            chooseInitialPlayer();
+        }
+
         if (gameThread == null || !gameThread.isAlive()) {
             gameThread = new Thread(this::runGameLoop);
             gameThread.start();
@@ -227,11 +239,130 @@ public class GameSession {
             handleOccupationInput(playerId, input);
             return;
         }
-
+        if(stage == GameStage.ATTACKING){
+            handleAttackingInput(playerId,input);
+        }
 
 
         broadcastGameState();
     }
+    boolean checkAttackingInput(Long playerId, JsonObject input) {
+        if (!input.has("type")) {
+            sendToPlayer(playerId, Map.of(
+                    "action", "error",
+                    "message", "Missing 'type' field"
+            ));
+            return false;
+        }
+
+        String type = input.get("type").getAsString();
+        if (!type.equals("attacking")) {
+            sendToPlayer(playerId, Map.of(
+                    "action", "error",
+                    "message", "Invalid action type"
+            ));
+            return false;
+        }
+
+        if (!input.has("countryId")) {
+            sendToPlayer(playerId, Map.of(
+                    "action", "error",
+                    "message", "Missing 'countryId' field"
+            ));
+            return false;
+        }
+
+        if (!input.has("troops")) {
+            sendToPlayer(playerId, Map.of(
+                    "action", "error",
+                    "message", "Missing 'troops' field"
+            ));
+            return false;
+        }
+
+        return true;
+    }
+
+    private void handleAttackingInput(Long playerId, JsonObject input) {
+
+
+             if (checkAttackingInput(playerId, input)) {
+
+            long sourceCountryId = input.get("countryId").getAsLong();
+            int attackingTroops = input.get("troops").getAsInt();
+
+
+            List<Occupy> playerOccupies = occupies.get(playerId);
+            if (playerOccupies == null) {
+                sendToPlayer(playerId, Map.of(
+                        "action", "error",
+                        "message", "You do not occupy any countries."));
+                return;
+            }
+
+
+            Occupy sourceOccupy = playerOccupies.stream()
+                    .filter(o -> o.getCountryId() == sourceCountryId)
+                    .findFirst()
+                    .orElse(null);
+
+            if (sourceOccupy == null) {
+                sendToPlayer(playerId, Map.of(
+                        "action", "error",
+                        "message", "You do not occupy this country."));
+                return;
+            }
+
+            int currentTroops = sourceOccupy.getTroops();
+
+            if (currentTroops - attackingTroops < 1) {
+                sendToPlayer(playerId, Map.of(
+                        "action", "error",
+                        "message", "You must leave at least one troop behind."));
+                return;
+            }
+
+
+            List<Border> borders = borderService.findByCountryId(sourceCountryId);
+
+            List<Long> attackableZones = new ArrayList<>();
+
+            for (Border border : borders) {
+                long neighborId = border.getCountry1Id().equals(sourceCountryId)
+                        ? border.getCountry2Id()
+                        : border.getCountry1Id();
+
+                boolean occupiedByEnemy = occupies.entrySet().stream()
+                        .anyMatch(entry ->
+                                !entry.getKey().equals(playerId) &&
+                                        entry.getValue().stream().anyMatch(o -> o.getCountryId().equals(neighborId)));
+
+                if (occupiedByEnemy) {
+                    attackableZones.add(neighborId);
+                }
+            }
+
+            if (attackableZones.isEmpty()) {
+                sendToPlayer(playerId, Map.of(
+                        "action", "error",
+                        "message", "No enemies around this country to attack."));
+                return;
+            }
+
+
+            sendToPlayer(playerId, Map.of(
+                    "action", "valid_attack",
+                    "from", sourceCountryId,
+                    "attackableZones", attackableZones,
+                    "availableTroops", currentTroops - 1
+            ));
+
+        }
+
+
+
+    }
+
 
     private void handleOccupationInput(Long playerId, JsonObject input) {
         if (!input.has("countryId")) {
@@ -278,6 +409,7 @@ public class GameSession {
         if (allDone) {
             stage = GameStage.ATTACKING;
             broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
+            nextTurn();
         } else {
             Map<String, Object> occupationUpdate = new HashMap<>();
             occupationUpdate.put("action", "territory_occupied");
@@ -445,6 +577,59 @@ int numOfTroops = 0;
         }
 
         return numOfTroops;
+    }
+
+
+    private void autoFillTerritories() {
+        System.out.println("Auto-filling territories for testing...");
+
+        occupies.clear();
+
+
+        List<Country> allCountriesCopy = new ArrayList<>(allCountrys);
+        Collections.shuffle(allCountriesCopy);
+
+
+        List<Long> playerIds = new ArrayList<>(players.keySet());
+        if (playerIds.isEmpty()) return;
+
+
+        int countriesPerPlayer = allCountriesCopy.size() / playerIds.size();
+        int remainingCountries = allCountriesCopy.size() % playerIds.size();
+
+        int countryIndex = 0;
+
+
+        for (int i = 0; i < playerIds.size(); i++) {
+            Long playerId = playerIds.get(i);
+            int territoriesToAssign = countriesPerPlayer + (i < remainingCountries ? 1 : 0);
+
+
+            List<Occupy> playerOccupies = new ArrayList<>();
+
+
+            for (int j = 0; j < territoriesToAssign && countryIndex < allCountriesCopy.size(); j++) {
+                Country country = allCountriesCopy.get(countryIndex++);
+
+
+                int troopsPerTerritory = 3;
+
+                playerOccupies.add(new Occupy(playerId, country.getId(), troopsPerTerritory));
+            }
+
+
+            occupies.put(playerId, playerOccupies);
+
+
+            troopsToPlace.put(playerId, 0);
+        }
+
+        sendMapUpdate();
+
+
+        stage = GameStage.ATTACKING;
+        broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
+        nextTurn();
     }
 
 }
