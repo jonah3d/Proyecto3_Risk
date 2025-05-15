@@ -583,54 +583,129 @@ int numOfTroops = 0;
     private void autoFillTerritories() {
         System.out.println("Auto-filling territories for testing...");
 
+        // Reset any existing occupations
         occupies.clear();
 
-
+        // Get all countries and shuffle them
         List<Country> allCountriesCopy = new ArrayList<>(allCountrys);
         Collections.shuffle(allCountriesCopy);
 
-
+        // Get all player IDs
         List<Long> playerIds = new ArrayList<>(players.keySet());
-        if (playerIds.isEmpty()) return;
+        if (playerIds.isEmpty()) {
+            System.out.println("No players to auto-fill territories for!");
+            return;
+        }
 
+        System.out.println("Assigning territories to " + playerIds.size() + " players...");
 
+        // Calculate territories per player (roughly equal distribution)
         int countriesPerPlayer = allCountriesCopy.size() / playerIds.size();
         int remainingCountries = allCountriesCopy.size() % playerIds.size();
 
         int countryIndex = 0;
 
-
+        // Distribute countries among players
         for (int i = 0; i < playerIds.size(); i++) {
             Long playerId = playerIds.get(i);
             int territoriesToAssign = countriesPerPlayer + (i < remainingCountries ? 1 : 0);
 
-
+            // Create a list to store this player's occupations
             List<Occupy> playerOccupies = new ArrayList<>();
 
-
+            // Assign territories to this player
             for (int j = 0; j < territoriesToAssign && countryIndex < allCountriesCopy.size(); j++) {
                 Country country = allCountriesCopy.get(countryIndex++);
 
-
+                // Assign 3 troops per territory for testing
                 int troopsPerTerritory = 3;
 
                 playerOccupies.add(new Occupy(playerId, country.getId(), troopsPerTerritory));
+                System.out.println("Assigned country " + country.getId() + " to player " + playerId + " with " + troopsPerTerritory + " troops");
             }
 
-
+            // Store the player's occupations
             occupies.put(playerId, playerOccupies);
 
-
+            // Set troops to place to 0 since we've auto-assigned them
             troopsToPlace.put(playerId, 0);
         }
 
-        sendMapUpdate();
+        // First choose a player to start
+        chooseInitialPlayer();
 
-
+        // Then update game stage to ATTACKING
         stage = GameStage.ATTACKING;
-        broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
-        sendMapUpdate();
-        nextTurn();
+
+        // Notify clients of stage change
+        Map<String, Object> stageChangeMessage = new HashMap<>();
+        stageChangeMessage.put("action", "stage_change");
+        stageChangeMessage.put("stage", "ATTACKING");
+        broadcast(stageChangeMessage);
+
+        // Ensure map update is sent after stage change
+        try {
+            Thread.sleep(200); // Small delay to ensure messages are processed in order
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Send detailed map update with owner and troop information
+        sendDetailedMapUpdate();
+
+        // Additional delay before the turn notification
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Send turn notification again to ensure it's received after map update
+        Map<String, Object> turnMessage = new HashMap<>();
+        turnMessage.put("action", "player_turn");
+        turnMessage.put("playerId", currentPlayerId);
+        broadcast(turnMessage);
+
+        System.out.println("Auto-fill complete. Game is now in ATTACKING stage. Current player: " + currentPlayerId);
+    }
+    private void sendDetailedMapUpdate() {
+        // Create detailed country data
+        List<Map<String, Object>> countriesData = new ArrayList<>();
+
+        for (Country country : allCountrys) {
+            Map<String, Object> countryData = new HashMap<>();
+            countryData.put("countryId", country.getId());
+
+            // Find owner and troops for this country
+            Long ownerId = null;
+            int troops = 0;
+
+            for (Map.Entry<Long, List<Occupy>> entry : occupies.entrySet()) {
+                for (Occupy occupy : entry.getValue()) {
+                    if (occupy.getCountryId() == country.getId()) {
+                        ownerId = occupy.getPlayerId();
+                        troops = occupy.getTroops();
+                        break;
+                    }
+                }
+                if (ownerId != null) break;
+            }
+
+            countryData.put("troops", troops);
+            if (ownerId != null) {
+                countryData.put("playerId", ownerId);
+            }
+
+            countriesData.add(countryData);
+        }
+
+        // Send detailed map update
+        Map<String, Object> mapUpdateMessage = new HashMap<>();
+        mapUpdateMessage.put("action", "map_update");
+        mapUpdateMessage.put("countries", countriesData);
+        broadcast(mapUpdateMessage);
+
+        System.out.println("Sent detailed map update with " + countriesData.size() + " countries");
     }
 
 }
