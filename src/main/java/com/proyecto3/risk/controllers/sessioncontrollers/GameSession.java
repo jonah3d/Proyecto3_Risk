@@ -313,11 +313,11 @@ public class GameSession {
             }
 
 
-            sendToPlayer(playerId, Map.of("action", "valid_attack", "from", sourceCountryId, "attackableZones", attackableZones,
+            sendToPlayer(playerId, Map.of("action", "valid_attack", "from", sourceCountryId, "attackableZones", attackableZones
                     //   "availableTroops", currentTroops - 1
             ));
 
-            int attackingTerritory = recieveAttackingTerritory(attackableZones);
+           // int attackingTerritory = recieveAttackingTerritory(attackableZones);
 
         }
 
