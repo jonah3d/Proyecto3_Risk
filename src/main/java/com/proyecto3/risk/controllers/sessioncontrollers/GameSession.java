@@ -37,17 +37,12 @@ public class GameSession {
     private final BorderService borderService;
 
     public enum GameState {
-        WAITING,
-        PLAYING,
-        FINISHED
+        WAITING, PLAYING, FINISHED
     }
 
     public enum GameStage {
-        OCCUPATION,
-        ATTACKING,
-        REFORCE
+        OCCUPATION, ATTACKING, REFORCE
     }
-
 
 
     public GameSession(String token, int maxPlayers, boolean isPublic, String gameName, Long id, CountryService countryService, BorderService borderService) {
@@ -122,9 +117,9 @@ public class GameSession {
 
             broadcastPlayerList();
 
-            Map<String,Object> leavePlayers = new HashMap<>();
-            leavePlayers.put("action","player_left");
-            leavePlayers.put("player_id",playerId);
+            Map<String, Object> leavePlayers = new HashMap<>();
+            leavePlayers.put("action", "player_left");
+            leavePlayers.put("player_id", playerId);
 
             broadcast(leavePlayers);
             nextTurn();
@@ -136,9 +131,7 @@ public class GameSession {
     private void broadcastPlayerList() {
         Map<String, Object> playerListMessage = new HashMap<>();
         playerListMessage.put("action", "player_list");
-        playerListMessage.put("players", players.values().stream()
-                .map(ps -> ps.getPlayer().getId())
-                .collect(Collectors.toList()));
+        playerListMessage.put("players", players.values().stream().map(ps -> ps.getPlayer().getId()).collect(Collectors.toList()));
 
         broadcast(playerListMessage);
     }
@@ -158,7 +151,7 @@ public class GameSession {
         broadcast(gameStartMessage);
 
 
-         autoFillTerritories();
+      // autoFillTerritories();
 
 
         if (stage == GameStage.OCCUPATION) {
@@ -228,10 +221,7 @@ public class GameSession {
         }
 
         if (!playerId.equals(currentPlayerId)) {
-            sendToPlayer(playerId, Map.of(
-                    "action", "error",
-                    "message", "It's not your turn"
-            ));
+            sendToPlayer(playerId, Map.of("action", "error", "message", "It's not your turn"));
             return;
         }
 
@@ -239,44 +229,33 @@ public class GameSession {
             handleOccupationInput(playerId, input);
             return;
         }
-        if(stage == GameStage.ATTACKING){
-            handleAttackingInput(playerId,input);
+        if (stage == GameStage.ATTACKING) {
+            handleAttackingInput(playerId, input);
         }
 
 
         broadcastGameState();
     }
+
     boolean checkAttackingInput(Long playerId, JsonObject input) {
         if (!input.has("type")) {
-            sendToPlayer(playerId, Map.of(
-                    "action", "error",
-                    "message", "Missing 'type' field"
-            ));
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'type' field"));
             return false;
         }
 
         String type = input.get("type").getAsString();
         if (!type.equals("attacking")) {
-            sendToPlayer(playerId, Map.of(
-                    "action", "error",
-                    "message", "Invalid action type"
-            ));
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Invalid action type"));
             return false;
         }
 
         if (!input.has("countryId")) {
-            sendToPlayer(playerId, Map.of(
-                    "action", "error",
-                    "message", "Missing 'countryId' field"
-            ));
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'countryId' field"));
             return false;
         }
 
         if (!input.has("troops")) {
-            sendToPlayer(playerId, Map.of(
-                    "action", "error",
-                    "message", "Missing 'troops' field"
-            ));
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'troops' field"));
             return false;
         }
 
@@ -286,7 +265,7 @@ public class GameSession {
     private void handleAttackingInput(Long playerId, JsonObject input) {
 
 
-             if (checkAttackingInput(playerId, input)) {
+        if (checkAttackingInput(playerId, input)) {
 
             long sourceCountryId = input.get("countryId").getAsLong();
             int attackingTroops = input.get("troops").getAsInt();
@@ -294,31 +273,22 @@ public class GameSession {
 
             List<Occupy> playerOccupies = occupies.get(playerId);
             if (playerOccupies == null) {
-                sendToPlayer(playerId, Map.of(
-                        "action", "error",
-                        "message", "You do not occupy any countries."));
+                sendToPlayer(playerId, Map.of("action", "error", "message", "You do not occupy any countries."));
                 return;
             }
 
 
-            Occupy sourceOccupy = playerOccupies.stream()
-                    .filter(o -> o.getCountryId() == sourceCountryId)
-                    .findFirst()
-                    .orElse(null);
+            Occupy sourceOccupy = playerOccupies.stream().filter(o -> o.getCountryId() == sourceCountryId).findFirst().orElse(null);
 
             if (sourceOccupy == null) {
-                sendToPlayer(playerId, Map.of(
-                        "action", "error",
-                        "message", "You do not occupy this country."));
+                sendToPlayer(playerId, Map.of("action", "error", "message", "You do not occupy this country."));
                 return;
             }
 
             int currentTroops = sourceOccupy.getTroops();
 
             if (currentTroops - attackingTroops < 1) {
-                sendToPlayer(playerId, Map.of(
-                        "action", "error",
-                        "message", "You must leave at least one troop behind."));
+                sendToPlayer(playerId, Map.of("action", "error", "message", "You must leave at least one troop behind."));
                 return;
             }
 
@@ -328,14 +298,9 @@ public class GameSession {
             List<Long> attackableZones = new ArrayList<>();
 
             for (Border border : borders) {
-                long neighborId = border.getCountry1Id().equals(sourceCountryId)
-                        ? border.getCountry2Id()
-                        : border.getCountry1Id();
+                long neighborId = border.getCountry1Id().equals(sourceCountryId) ? border.getCountry2Id() : border.getCountry1Id();
 
-                boolean occupiedByEnemy = occupies.entrySet().stream()
-                        .anyMatch(entry ->
-                                !entry.getKey().equals(playerId) &&
-                                        entry.getValue().stream().anyMatch(o -> o.getCountryId().equals(neighborId)));
+                boolean occupiedByEnemy = occupies.entrySet().stream().anyMatch(entry -> !entry.getKey().equals(playerId) && entry.getValue().stream().anyMatch(o -> o.getCountryId().equals(neighborId)));
 
                 if (occupiedByEnemy) {
                     attackableZones.add(neighborId);
@@ -343,22 +308,18 @@ public class GameSession {
             }
 
             if (attackableZones.isEmpty()) {
-                sendToPlayer(playerId, Map.of(
-                        "action", "error",
-                        "message", "No enemies around this country to attack."));
+                sendToPlayer(playerId, Map.of("action", "error", "message", "No enemies around this country to attack."));
                 return;
             }
 
 
-            sendToPlayer(playerId, Map.of(
-                    "action", "valid_attack",
-                    "from", sourceCountryId,
-                    "attackableZones", attackableZones,
-                    "availableTroops", currentTroops - 1
+            sendToPlayer(playerId, Map.of("action", "valid_attack", "from", sourceCountryId, "attackableZones", attackableZones,
+                    //   "availableTroops", currentTroops - 1
             ));
 
-        }
+            int attackingTerritory = recieveAttackingTerritory(attackableZones);
 
+        }
 
 
     }
@@ -366,39 +327,27 @@ public class GameSession {
 
     private void handleOccupationInput(Long playerId, JsonObject input) {
         if (!input.has("countryId")) {
-            sendToPlayer(playerId, Map.of(
-                    "action", "error",
-                    "message", "Missing 'countryId' for occupation"
-            ));
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'countryId' for occupation"));
             return;
         }
 
         long countryId = input.get("countryId").getAsLong();
         int numoftroops = input.get("troops").getAsInt();
-        if(numoftroops!=1){
-            sendToPlayer(playerId, Map.of(
-                    "action", "error",
-                    "message", "You can only place one troop"
-            ));
+        if (numoftroops != 1) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "You can only place one troop"));
             return;
         }
 
 
-        boolean alreadyOccupied = occupies.values().stream()
-                .flatMap(List::stream)
-                .anyMatch(o -> o.getCountryId() == countryId && !o.getPlayerId().equals(playerId));
+        boolean alreadyOccupied = occupies.values().stream().flatMap(List::stream).anyMatch(o -> o.getCountryId() == countryId && !o.getPlayerId().equals(playerId));
 
         if (alreadyOccupied) {
-            sendToPlayer(playerId, Map.of(
-                    "action", "error",
-                    "message", "Territory already occupied by another player"
-            ));
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Territory already occupied by another player"));
             return;
         }
 
 
-        occupies.computeIfAbsent(playerId, k -> new ArrayList<>())
-                .add(new Occupy(playerId, countryId, numoftroops));
+        occupies.computeIfAbsent(playerId, k -> new ArrayList<>()).add(new Occupy(playerId, countryId, numoftroops));
 
 
         troopsToPlace.put(playerId, troopsToPlace.get(playerId) - 1);
@@ -422,7 +371,6 @@ public class GameSession {
 
 
     }
-
 
 
     private void sendMapUpdate() {
@@ -474,12 +422,11 @@ public class GameSession {
     }
 
 
-
     private void broadcastGameState() {
-        // Create a game state update to send to all players
+
         Map<String, Object> gameState = new HashMap<>();
         gameState.put("action", "game_state");
-        // Add relevant game state data
+
 
         broadcast(gameState);
     }
@@ -556,24 +503,24 @@ public class GameSession {
     }
 
     private int calculateNumOfTroops(int maxPlayers) {
-int numOfTroops = 0;
+        int numOfTroops = 0;
 
         switch (maxPlayers) {
             case 2:
                 numOfTroops = 40;
-            break;
+                break;
             case 3:
                 numOfTroops = 35;
-            break;
+                break;
             case 4:
                 numOfTroops = 30;
-            break;
+                break;
             case 5:
                 numOfTroops = 25;
-            break;
+                break;
             case 6:
                 numOfTroops = 20;
-            break;
+                break;
         }
 
         return numOfTroops;
@@ -583,14 +530,14 @@ int numOfTroops = 0;
     private void autoFillTerritories() {
         System.out.println("Auto-filling territories for testing...");
 
-        // Reset any existing occupations
+
         occupies.clear();
 
-        // Get all countries and shuffle them
+
         List<Country> allCountriesCopy = new ArrayList<>(allCountrys);
         Collections.shuffle(allCountriesCopy);
 
-        // Get all player IDs
+
         List<Long> playerIds = new ArrayList<>(players.keySet());
         if (playerIds.isEmpty()) {
             System.out.println("No players to auto-fill territories for!");
@@ -599,68 +546,68 @@ int numOfTroops = 0;
 
         System.out.println("Assigning territories to " + playerIds.size() + " players...");
 
-        // Calculate territories per player (roughly equal distribution)
+
         int countriesPerPlayer = allCountriesCopy.size() / playerIds.size();
         int remainingCountries = allCountriesCopy.size() % playerIds.size();
 
         int countryIndex = 0;
 
-        // Distribute countries among players
+
         for (int i = 0; i < playerIds.size(); i++) {
             Long playerId = playerIds.get(i);
             int territoriesToAssign = countriesPerPlayer + (i < remainingCountries ? 1 : 0);
 
-            // Create a list to store this player's occupations
+
             List<Occupy> playerOccupies = new ArrayList<>();
 
-            // Assign territories to this player
+
             for (int j = 0; j < territoriesToAssign && countryIndex < allCountriesCopy.size(); j++) {
                 Country country = allCountriesCopy.get(countryIndex++);
 
-                // Assign 3 troops per territory for testing
+
                 int troopsPerTerritory = 3;
 
                 playerOccupies.add(new Occupy(playerId, country.getId(), troopsPerTerritory));
                 System.out.println("Assigned country " + country.getId() + " to player " + playerId + " with " + troopsPerTerritory + " troops");
             }
 
-            // Store the player's occupations
+
             occupies.put(playerId, playerOccupies);
 
-            // Set troops to place to 0 since we've auto-assigned them
+
             troopsToPlace.put(playerId, 0);
         }
 
-        // First choose a player to start
+
         chooseInitialPlayer();
 
-        // Then update game stage to ATTACKING
+
         stage = GameStage.ATTACKING;
 
-        // Notify clients of stage change
+
         Map<String, Object> stageChangeMessage = new HashMap<>();
         stageChangeMessage.put("action", "stage_change");
         stageChangeMessage.put("stage", "ATTACKING");
         broadcast(stageChangeMessage);
 
-        // Ensure map update is sent after stage change
-        try {
-            Thread.sleep(200); // Small delay to ensure messages are processed in order
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
 
-        // Send detailed map update with owner and troop information
-        sendDetailedMapUpdate();
-
-        // Additional delay before the turn notification
         try {
             Thread.sleep(200);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
 
-        // Send turn notification again to ensure it's received after map update
+
+        sendDetailedMapUpdate();
+
+
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+
         Map<String, Object> turnMessage = new HashMap<>();
         turnMessage.put("action", "player_turn");
         turnMessage.put("playerId", currentPlayerId);
@@ -668,15 +615,16 @@ int numOfTroops = 0;
 
         System.out.println("Auto-fill complete. Game is now in ATTACKING stage. Current player: " + currentPlayerId);
     }
+
     private void sendDetailedMapUpdate() {
-        // Create detailed country data
+
         List<Map<String, Object>> countriesData = new ArrayList<>();
 
         for (Country country : allCountrys) {
             Map<String, Object> countryData = new HashMap<>();
             countryData.put("countryId", country.getId());
 
-            // Find owner and troops for this country
+
             Long ownerId = null;
             int troops = 0;
 
@@ -699,8 +647,7 @@ int numOfTroops = 0;
             countriesData.add(countryData);
         }
 
-        // Send detailed map update
-        Map<String, Object> mapUpdateMessage = new HashMap<>();
+         Map<String, Object> mapUpdateMessage = new HashMap<>();
         mapUpdateMessage.put("action", "map_update");
         mapUpdateMessage.put("countries", countriesData);
         broadcast(mapUpdateMessage);
