@@ -151,7 +151,7 @@ public class GameSession {
         broadcast(gameStartMessage);
 
 
-      // autoFillTerritories();
+      autoFillTerritories();
 
 
         if (stage == GameStage.OCCUPATION) {
@@ -237,6 +237,7 @@ public class GameSession {
         broadcastGameState();
     }
 
+    // Improved version that combines the checks and handles the full attack flow
     boolean checkAttackingInput(Long playerId, JsonObject input) {
         if (!input.has("type")) {
             sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'type' field"));
@@ -254,6 +255,11 @@ public class GameSession {
             return false;
         }
 
+        if (!input.has("enemyCountryId")) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'enemyCountryId' field"));
+            return false;
+        }
+
         if (!input.has("troops")) {
             sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'troops' field"));
             return false;
@@ -263,22 +269,22 @@ public class GameSession {
     }
 
     private void handleAttackingInput(Long playerId, JsonObject input) {
-
-
         if (checkAttackingInput(playerId, input)) {
-
             long sourceCountryId = input.get("countryId").getAsLong();
             int attackingTroops = input.get("troops").getAsInt();
+            long enemyCountryId = input.get("enemyCountryId").getAsLong();
 
-
+            // Validate attacker owns the source country
             List<Occupy> playerOccupies = occupies.get(playerId);
             if (playerOccupies == null) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You do not occupy any countries."));
                 return;
             }
 
-
-            Occupy sourceOccupy = playerOccupies.stream().filter(o -> o.getCountryId() == sourceCountryId).findFirst().orElse(null);
+            Occupy sourceOccupy = playerOccupies.stream()
+                    .filter(o -> o.getCountryId() == sourceCountryId)
+                    .findFirst()
+                    .orElse(null);
 
             if (sourceOccupy == null) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You do not occupy this country."));
@@ -287,6 +293,7 @@ public class GameSession {
 
             int currentTroops = sourceOccupy.getTroops();
 
+            // Check if enough troops are available
             if (currentTroops - attackingTroops < 1) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You must leave at least one troop behind."));
                 return;
@@ -294,13 +301,16 @@ public class GameSession {
 
 
             List<Border> borders = borderService.findByCountryId(sourceCountryId);
-
             List<Long> attackableZones = new ArrayList<>();
 
             for (Border border : borders) {
-                long neighborId = border.getCountry1Id().equals(sourceCountryId) ? border.getCountry2Id() : border.getCountry1Id();
+                long neighborId = border.getCountry1Id().equals(sourceCountryId)
+                        ? border.getCountry2Id()
+                        : border.getCountry1Id();
 
-                boolean occupiedByEnemy = occupies.entrySet().stream().anyMatch(entry -> !entry.getKey().equals(playerId) && entry.getValue().stream().anyMatch(o -> o.getCountryId().equals(neighborId)));
+                boolean occupiedByEnemy = occupies.entrySet().stream()
+                        .anyMatch(entry -> !entry.getKey().equals(playerId) &&
+                                entry.getValue().stream().anyMatch(o -> o.getCountryId().equals(neighborId)));
 
                 if (occupiedByEnemy) {
                     attackableZones.add(neighborId);
@@ -313,17 +323,70 @@ public class GameSession {
             }
 
 
-            sendToPlayer(playerId, Map.of("action", "valid_attack", "from", sourceCountryId, "attackableZones", attackableZones
-                    //   "availableTroops", currentTroops - 1
+            if (!attackableZones.contains(enemyCountryId)) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "Invalid enemy country selected. Not adjacent or not enemy-owned."));
+                return;
+            }
+
+            // Find the defender player ID and their occupy object
+            Long defenderId = null;
+            Occupy targetOccupy = null;
+
+            for (Map.Entry<Long, List<Occupy>> entry : occupies.entrySet()) {
+                if (entry.getKey().equals(playerId)) continue; // Skip attacker
+
+                for (Occupy occupy : entry.getValue()) {
+                    if (occupy.getCountryId() == enemyCountryId) {
+                        defenderId = entry.getKey();
+                        targetOccupy = occupy;
+                        break;
+                    }
+                }
+                if (defenderId != null) break;
+            }
+
+            if (defenderId == null || targetOccupy == null) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "Could not find defending player."));
+                return;
+            }
+
+
+            sendToPlayer(defenderId, Map.of(
+                    "action", "territory_under_attack",
+                    "attackerId", playerId,
+                    "sourceCountryId", sourceCountryId,
+                    "targetCountryId", enemyCountryId,
+                    "attackingTroops", attackingTroops,
+                    "defendingTroops", targetOccupy.getTroops()
             ));
 
-           // int attackingTerritory = recieveAttackingTerritory(attackableZones);
+
+            sendToPlayer(playerId, Map.of(
+                    "action", "attack_initiated",
+                    "targetCountryId", enemyCountryId,
+                    "defenderId", defenderId,
+                    "attackingTroops", attackingTroops,
+                    "defendingTroops", targetOccupy.getTroops()
+            ));
+
+
+            Map<String, Object> attackBroadcast = new HashMap<>();
+            attackBroadcast.put("action", "attack_in_progress");
+            attackBroadcast.put("attackerId", playerId);
+            attackBroadcast.put("defenderId", defenderId);
+            attackBroadcast.put("sourceCountryId", sourceCountryId);
+            attackBroadcast.put("targetCountryId", enemyCountryId);
+            attackBroadcast.put("attackingTroops", attackingTroops);
+            attackBroadcast.put("defendingTroops", targetOccupy.getTroops());
+
+            for (Long pid : players.keySet()) {
+                if (!pid.equals(playerId) && !pid.equals(defenderId)) {
+                    sendToPlayer(pid, attackBroadcast);
+                }
+            }
 
         }
-
-
     }
-
 
     private void handleOccupationInput(Long playerId, JsonObject input) {
         if (!input.has("countryId")) {
