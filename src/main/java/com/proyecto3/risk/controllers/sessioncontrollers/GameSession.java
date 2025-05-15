@@ -629,6 +629,7 @@ int numOfTroops = 0;
 
         stage = GameStage.ATTACKING;
         broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
+        sendMapUpdate();
         nextTurn();
     }
 
