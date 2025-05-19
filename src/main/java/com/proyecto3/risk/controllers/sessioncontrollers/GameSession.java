@@ -377,6 +377,7 @@ public class GameSession {
                 throw new RuntimeException(e);
             }
 
+            // Update the troops after the attack
             int attackerwins = result[0];
             int defenderwins = result[1];
 
