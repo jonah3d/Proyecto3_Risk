@@ -27,10 +27,14 @@ public class GameSession {
     private final Map<Long, PlayerSession> players = new ConcurrentHashMap<>();
     private GameState state = GameState.WAITING;
     private GameStage stage;
+    private AttackPhase attackPhase;
     private Thread gameThread;
     List<Country> allCountrys = new ArrayList<>();
     private Map<Long, List<Occupy>> occupies = new ConcurrentHashMap<>();
     private final Map<Long, Integer> troopsToPlace = new ConcurrentHashMap<>();
+    private Long lastAttackSourceCountryId;
+    private Long lastAttackTargetCountryId;
+
 
 
     private final CountryService countryService;
@@ -42,6 +46,12 @@ public class GameSession {
 
     public enum GameStage {
         OCCUPATION, ATTACKING, REFORCE
+    }
+
+    public enum AttackPhase {
+        SELECTING_ATTACK,
+        MOVING_TROOPS,
+        FINISHED
     }
 
 
@@ -214,7 +224,6 @@ public class GameSession {
             gameThread.interrupt();
         }
     }
-
     public void handlePlayerInput(Long playerId, JsonObject input) {
         if (state != GameState.PLAYING) {
             return;
@@ -229,10 +238,16 @@ public class GameSession {
             handleOccupationInput(playerId, input);
             return;
         }
-        if (stage == GameStage.ATTACKING) {
-            handleAttackingInput(playerId, input);
-        }
 
+        if (stage == GameStage.ATTACKING) {
+            if (attackPhase == AttackPhase.SELECTING_ATTACK || attackPhase == AttackPhase.FINISHED) {
+                handleAttackingInput(playerId, input);
+            } else if (attackPhase == AttackPhase.MOVING_TROOPS) {
+                handleAttackMoveIn(playerId, input);
+            }
+        } else if (stage == GameStage.REFORCE) {
+            handleReforceInput(playerId, input);
+        }
 
         broadcastGameState();
     }
@@ -267,12 +282,36 @@ public class GameSession {
 
         return true;
     }
-
     private void handleAttackingInput(Long playerId, JsonObject input) {
-        if (checkAttackingInput(playerId, input)) {
+        if (!input.has("type")) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'type' field"));
+            return;
+        }
+
+        String type = input.get("type").getAsString();
+
+
+        if (type.equals("end_attack")) {
+            attackPhase = AttackPhase.FINISHED;
+            stage = GameStage.REFORCE;
+            sendToPlayer(playerId, Map.of("action", "info", "message", "Attack phase ended. Now entering fortify phase."));
+            broadcast(Map.of("action", "stage_change", "stage", "REFORCE", "playerId", playerId));
+            return;
+        }
+
+
+        if (type.equals("attack")) {
+            if (!checkAttackingInput(playerId, input)) {
+                return;
+            }
+
             long sourceCountryId = input.get("countryId").getAsLong();
             int attackingTroops = input.get("troops").getAsInt();
             long enemyCountryId = input.get("enemyCountryId").getAsLong();
+
+
+            lastAttackSourceCountryId = sourceCountryId;
+            lastAttackTargetCountryId = enemyCountryId;
 
 
             List<Occupy> playerOccupies = occupies.get(playerId);
@@ -294,7 +333,7 @@ public class GameSession {
             int currentTroops = sourceOccupy.getTroops();
 
 
-            if (currentTroops - attackingTroops < 1) {
+            if (currentTroops <= attackingTroops) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You must leave at least one troop behind."));
                 return;
             }
@@ -322,11 +361,11 @@ public class GameSession {
                 return;
             }
 
-
             if (!attackableZones.contains(enemyCountryId)) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "Invalid enemy country selected. Not adjacent or not enemy-owned."));
                 return;
             }
+
 
             Long defenderId = null;
             Occupy targetOccupy = null;
@@ -358,6 +397,7 @@ public class GameSession {
             int[] attackDice = attackerDiceRoll(attackingTroops);
             int[] defendDice = enemyDiceRoll(targetOccupy.getTroops());
 
+
             Map<String, Object> diceRolls = new HashMap<>();
             diceRolls.put("action", "dice_rolls");
             diceRolls.put("attackerDice", attackDice);
@@ -365,44 +405,238 @@ public class GameSession {
             broadcast(diceRolls);
 
 
-            int attackerwins = 0;
-            int defenderwins = 0;
+            int attackerLosses = 0;
+            int defenderLosses = 0;
             int comparisons = Math.min(attackDice.length, defendDice.length);
 
             for (int i = 0; i < comparisons; i++) {
                 if (attackDice[i] > defendDice[i]) {
-                    attackerwins++;
-                } else if(attackDice[i] <= defendDice[i]) {
-                    defenderwins++;
+                    defenderLosses++;
+                } else {
+                    attackerLosses++;
                 }
             }
 
 
-            sourceOccupy.setTroops(sourceOccupy.getTroops() - defenderwins);
-            targetOccupy.setTroops(targetOccupy.getTroops() - attackerwins);
+            sourceOccupy.setTroops(sourceOccupy.getTroops() - attackerLosses);
+            targetOccupy.setTroops(targetOccupy.getTroops() - defenderLosses);
 
 
             if (targetOccupy.getTroops() <= 0) {
-                int movingTroops = attackingTroops - attackerwins;
 
                 occupies.get(defenderId).removeIf(o -> o.getCountryId() == enemyCountryId);
 
 
-                Occupy newOccupy = new Occupy();
-                newOccupy.setPlayerId(playerId);
-                newOccupy.setCountryId(enemyCountryId);
-                newOccupy.setTroops(movingTroops);
+                attackPhase = AttackPhase.MOVING_TROOPS;
 
-                occupies.get(playerId).add(newOccupy);
+                // Notify player to move troops
+                Map<String, Object> moveTroopsPrompt = new HashMap<>();
+                moveTroopsPrompt.put("action", "move_troops");
+                moveTroopsPrompt.put("message", "Territory conquered! Move troops from source to conquered territory.");
+                moveTroopsPrompt.put("sourceCountryId", sourceCountryId);
+                moveTroopsPrompt.put("targetCountryId", enemyCountryId);
+                moveTroopsPrompt.put("maxTroops", sourceOccupy.getTroops() - 1);
+                sendToPlayer(playerId, moveTroopsPrompt);
 
-                sourceOccupy.setTroops(sourceOccupy.getTroops() - movingTroops);
+                // Broadcast territory conquered message
+                Map<String, Object> territoryConquered = new HashMap<>();
+                territoryConquered.put("action", "territory_conquered");
+                territoryConquered.put("attackerId", playerId);
+                territoryConquered.put("defenderId", defenderId);
+                territoryConquered.put("territoryId", enemyCountryId);
+                broadcast(territoryConquered);
+            } else {
+                // Attack not successful, but can continue attacking
+                Map<String, Object> attackResult = new HashMap<>();
+                attackResult.put("action", "attack_result");
+                attackResult.put("attackerLosses", attackerLosses);
+                attackResult.put("defenderLosses", defenderLosses);
+                attackResult.put("sourceCountryTroopsRemaining", sourceOccupy.getTroops());
+                attackResult.put("targetCountryTroopsRemaining", targetOccupy.getTroops());
+                broadcast(attackResult);
             }
+
 
             sendMapUpdate();
         }
     }
 
 
+    private void handleAttackMoveIn(Long playerId, JsonObject input) {
+        // This is called when a player is moving troops after conquering a territory
+        if (!input.has("type") || !input.get("type").getAsString().equals("move_troops")) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Invalid or missing type for troop movement"));
+            return;
+        }
+
+        if (!input.has("troops")) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Missing troops count for movement"));
+            return;
+        }
+
+
+        long sourceCountryId = lastAttackSourceCountryId;
+        long targetCountryId = lastAttackTargetCountryId;
+        int troopsToMove = input.get("troops").getAsInt();
+
+        List<Occupy> playerOccupies = occupies.get(playerId);
+        if (playerOccupies == null) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "You do not occupy any countries."));
+            return;
+        }
+
+        Occupy sourceOccupy = playerOccupies.stream()
+                .filter(o -> o.getCountryId() == sourceCountryId)
+                .findFirst()
+                .orElse(null);
+
+        if (sourceOccupy == null) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Source country not found."));
+            return;
+        }
+
+        int currentTroops = sourceOccupy.getTroops();
+
+        // Validate troop movement
+        if (currentTroops - troopsToMove < 1) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "You must leave at least one troop behind."));
+            return;
+        }
+
+        if (troopsToMove < 1) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "You must move at least one troop."));
+            return;
+        }
+
+
+        Occupy newOccupy = new Occupy();
+        newOccupy.setPlayerId(playerId);
+        newOccupy.setCountryId(targetCountryId);
+        newOccupy.setTroops(troopsToMove);
+
+
+        playerOccupies.add(newOccupy);
+
+
+        sourceOccupy.setTroops(sourceOccupy.getTroops() - troopsToMove);
+
+
+        attackPhase = AttackPhase.SELECTING_ATTACK;
+
+
+        sendToPlayer(playerId, Map.of(
+                "action", "info",
+                "message", "Troops moved successfully. You can continue attacking or end your attack phase."
+        ));
+
+
+        sendMapUpdate();
+    }
+
+
+    private void handleReforceInput(Long playerId, JsonObject input) {
+        if (!input.has("type")) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'type' field"));
+            return;
+        }
+
+        String type = input.get("type").getAsString();
+
+        // Check if player wants to skip fortification and end turn
+        if (type.equals("end_turn")) {
+            // Skip fortification and go to next player's turn
+            nextTurn();
+            return;
+        }
+
+        // Handle fortification move
+        if (type.equals("fortify")) {
+            // Validate required fields
+            if (!input.has("sourceCountryId") || !input.has("targetCountryId") || !input.has("troops")) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "Missing required fields for fortification"));
+                return;
+            }
+
+            long sourceCountryId = input.get("sourceCountryId").getAsLong();
+            long targetCountryId = input.get("targetCountryId").getAsLong();
+            int troopsToMove = input.get("troops").getAsInt();
+
+            // Check that player owns both territories
+            List<Occupy> playerOccupies = occupies.get(playerId);
+            if (playerOccupies == null) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "You don't occupy any territories"));
+                return;
+            }
+
+            // Find source territory occupation
+            Occupy sourceOccupy = playerOccupies.stream()
+                    .filter(o -> o.getCountryId() == sourceCountryId)
+                    .findFirst()
+                    .orElse(null);
+
+            if (sourceOccupy == null) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "You don't control the source territory"));
+                return;
+            }
+
+            // Find target territory occupation
+            Occupy targetOccupy = playerOccupies.stream()
+                    .filter(o -> o.getCountryId() == targetCountryId)
+                    .findFirst()
+                    .orElse(null);
+
+            if (targetOccupy == null) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "You don't control the target territory"));
+                return;
+            }
+
+            // Check if territories are adjacent using BorderService
+            List<Border> borders = borderService.findByCountryId(sourceCountryId);
+            boolean isAdjacent = borders.stream().anyMatch(border ->
+                    (border.getCountry1Id().equals(sourceCountryId) && border.getCountry2Id().equals(targetCountryId)) ||
+                            (border.getCountry1Id().equals(targetCountryId) && border.getCountry2Id().equals(sourceCountryId))
+            );
+
+            if (!isAdjacent) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "Territories must be adjacent for fortification"));
+                return;
+            }
+
+            // Validate troop movement
+            int currentTroops = sourceOccupy.getTroops();
+            if (troopsToMove < 1) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "You must move at least one troop"));
+                return;
+            }
+
+            if (currentTroops <= troopsToMove) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "You must leave at least one troop behind"));
+                return;
+            }
+
+            // Perform the troop movement
+            sourceOccupy.setTroops(sourceOccupy.getTroops() - troopsToMove);
+            targetOccupy.setTroops(targetOccupy.getTroops() + troopsToMove);
+
+            // Notify player of successful move
+            sendToPlayer(playerId, Map.of("action", "info", "message", "Fortification complete. Your turn has ended."));
+
+            // Broadcast fortification to all players
+            Map<String, Object> fortificationMessage = new HashMap<>();
+            fortificationMessage.put("action", "fortification");
+            fortificationMessage.put("playerId", playerId);
+            fortificationMessage.put("sourceCountryId", sourceCountryId);
+            fortificationMessage.put("targetCountryId", targetCountryId);
+            fortificationMessage.put("troops", troopsToMove);
+            broadcast(fortificationMessage);
+
+
+            sendMapUpdate();
+
+
+            nextTurn();
+        }
+    }
 
     int calculateDicenumber() {
         return new Random().nextInt(6) + 1;
@@ -438,23 +672,6 @@ public class GameSession {
         }
     }
 
-
-
-    int[] calculateRoundWinner(int[] attackerDice, int[] defenderDice) {
-        int comparisons = Math.min(attackerDice.length, defenderDice.length);
-        int attackerwins = 0;
-        int defenderwins = 0;
-
-        for (int i = 0; i < comparisons; i++) {
-            if (attackerDice[i] > defenderDice[i]) {
-                attackerwins++;
-            } else {
-                defenderwins++;
-            }
-        }
-
-        return new int[]{attackerwins, defenderwins};
-    }
 
 
     private void broadcastAttack(Long playerId, Long defenderId, long sourceCountryId, long enemyCountryId, int attackingTroops, Occupy targetOccupy) {
@@ -527,6 +744,8 @@ public class GameSession {
 
         if (allDone) {
             stage = GameStage.ATTACKING;
+            attackPhase = AttackPhase.SELECTING_ATTACK;
+
             broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
             nextTurn();
         } else {
