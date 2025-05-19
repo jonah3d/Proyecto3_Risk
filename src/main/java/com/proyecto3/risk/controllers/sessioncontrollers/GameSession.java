@@ -241,6 +241,7 @@ public class GameSession {
 
         if (stage == GameStage.ATTACKING) {
             if (attackPhase == AttackPhase.SELECTING_ATTACK || attackPhase == AttackPhase.FINISHED) {
+                System.out.println("Handling attacking input");
                 handleAttackingInput(playerId, input);
             } else if (attackPhase == AttackPhase.MOVING_TROOPS) {
                 handleAttackMoveIn(playerId, input);
@@ -396,6 +397,8 @@ public class GameSession {
 
             int[] attackDice = attackerDiceRoll(attackingTroops);
             int[] defendDice = enemyDiceRoll(targetOccupy.getTroops());
+            System.out.println("Attacker dice: " + Arrays.toString(attackDice));
+            System.out.println("Defender dice: " + Arrays.toString(defendDice));
 
 
             Map<String, Object> diceRolls = new HashMap<>();
@@ -747,7 +750,7 @@ public class GameSession {
             attackPhase = AttackPhase.SELECTING_ATTACK;
 
             broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
-            nextTurn();
+           // nextTurn();
         } else {
             Map<String, Object> occupationUpdate = new HashMap<>();
             occupationUpdate.put("action", "territory_occupied");
