@@ -220,6 +220,7 @@ public class GameController {
     }
 
     private void handleGameInput(WebSocketSession session, JsonObject json) {
+
         Player player = sessionManager.getPlayer(session);
         if (player == null) {
             sendError(session, "You must register before sending game input");
