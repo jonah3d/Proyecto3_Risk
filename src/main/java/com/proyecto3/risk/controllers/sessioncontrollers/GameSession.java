@@ -350,71 +350,76 @@ public class GameSession {
             }
 
 
-
             enemyUnderAttackMessage(playerId, defenderId, sourceCountryId, enemyCountryId, attackingTroops, targetOccupy);
             attackingPlayerConfirmation(playerId, enemyCountryId, defenderId, attackingTroops, targetOccupy);
             broadcastAttack(playerId, defenderId, sourceCountryId, enemyCountryId, attackingTroops, targetOccupy);
 
+            // Roll dice ONCE
             int[] attackDice = attackerDiceRoll(attackingTroops);
             int[] defendDice = enemyDiceRoll(targetOccupy.getTroops());
 
-            int[] result = calculateRoundWinner(attackDice, defendDice);
-
+            // Show rolls
             System.out.println("====================================================");
-            System.out.println("RESULTS -> " + Arrays.toString(result));
             System.out.println("ATTACKER DICE -> " + Arrays.toString(attackDice));
             System.out.println("DEFENDER DICE -> " + Arrays.toString(defendDice));
             System.out.println("====================================================");
 
+            // Send to players
             Map<String, Object> diceRolls = new HashMap<>();
             diceRolls.put("action", "dice_rolls");
             diceRolls.put("attackerDice", attackDice);
             diceRolls.put("defenderDice", defendDice);
             broadcast(diceRolls);
+
             try {
                 Thread.sleep(2000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
 
-            // Update the troops after the attack
-            int attackerwins = result[0];
-            int defenderwins = result[1];
+            // Calculate result
+            int attackerwins = 0;
+            int defenderwins = 0;
+            int comparisons = Math.min(attackDice.length, defendDice.length);
 
+            for (int i = 0; i < comparisons; i++) {
+                if (attackDice[i] > defendDice[i]) {
+                    attackerwins++;
+                } else {
+                    defenderwins++;
+                }
+            }
 
+            // Update troop counts
             sourceOccupy.setTroops(sourceOccupy.getTroops() - attackerwins);
             targetOccupy.setTroops(targetOccupy.getTroops() - defenderwins);
 
+            // Capture logic
             if (targetOccupy.getTroops() <= 0) {
+                int movingTroops = attackingTroops - attackerwins;
 
+                // Remove from defender
                 occupies.get(defenderId).removeIf(o -> o.getCountryId() == enemyCountryId);
 
+                // Add to attacker
+                Occupy newOccupy = new Occupy();
+                newOccupy.setPlayerId(playerId);
+                newOccupy.setCountryId(enemyCountryId);
+                newOccupy.setTroops(movingTroops);
 
-                int moveInTroops = attackingTroops - attackerwins;
-                if (moveInTroops < 1) moveInTroops = 1;
+                occupies.get(playerId).add(newOccupy);
 
-                sourceOccupy.setTroops(sourceOccupy.getTroops() - moveInTroops);
-                occupies.get(playerId).add(new Occupy(playerId, enemyCountryId, moveInTroops));
+                sourceOccupy.setTroops(sourceOccupy.getTroops() - movingTroops);
             }
 
             sendMapUpdate();
-
-        }
-    }
-    private void reverse(int[] arr) {
-        for (int i = 0; i < arr.length / 2; i++) {
-            int temp = arr[i];
-            arr[i] = arr[arr.length - 1 - i];
-            arr[arr.length - 1 - i] = temp;
         }
     }
 
 
-    int calculateDicenumber(){
-        int MAX_DICE_NUMBER = 6;
-        int MIN_DICE_NUMBER = 1;
-        Random random = new Random();
-        return random.nextInt(MAX_DICE_NUMBER - MIN_DICE_NUMBER + 1) + MIN_DICE_NUMBER;
+
+    int calculateDicenumber() {
+        return new Random().nextInt(6) + 1;
     }
 
     int[] attackerDiceRoll(int attackingTroops) {
@@ -438,6 +443,17 @@ public class GameSession {
         reverse(defenderDice);
         return defenderDice;
     }
+
+    private void reverse(int[] arr) {
+        for (int i = 0; i < arr.length / 2; i++) {
+            int temp = arr[i];
+            arr[i] = arr[arr.length - 1 - i];
+            arr[arr.length - 1 - i] = temp;
+        }
+    }
+
+
+
     int[] calculateRoundWinner(int[] attackerDice, int[] defenderDice) {
         int comparisons = Math.min(attackerDice.length, defenderDice.length);
         int attackerwins = 0;
