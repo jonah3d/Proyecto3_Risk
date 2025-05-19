@@ -237,7 +237,7 @@ public class GameSession {
         broadcastGameState();
     }
 
-    // Improved version that combines the checks and handles the full attack flow
+
     boolean checkAttackingInput(Long playerId, JsonObject input) {
         if (!input.has("type")) {
             sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'type' field"));
@@ -274,7 +274,7 @@ public class GameSession {
             int attackingTroops = input.get("troops").getAsInt();
             long enemyCountryId = input.get("enemyCountryId").getAsLong();
 
-            // Validate attacker owns the source country
+
             List<Occupy> playerOccupies = occupies.get(playerId);
             if (playerOccupies == null) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You do not occupy any countries."));
@@ -293,7 +293,7 @@ public class GameSession {
 
             int currentTroops = sourceOccupy.getTroops();
 
-            // Check if enough troops are available
+
             if (currentTroops - attackingTroops < 1) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You must leave at least one troop behind."));
                 return;
@@ -328,12 +328,11 @@ public class GameSession {
                 return;
             }
 
-            // Find the defender player ID and their occupy object
             Long defenderId = null;
             Occupy targetOccupy = null;
 
             for (Map.Entry<Long, List<Occupy>> entry : occupies.entrySet()) {
-                if (entry.getKey().equals(playerId)) continue; // Skip attacker
+                if (entry.getKey().equals(playerId)) continue;
 
                 for (Occupy occupy : entry.getValue()) {
                     if (occupy.getCountryId() == enemyCountryId) {
@@ -351,41 +350,146 @@ public class GameSession {
             }
 
 
-            sendToPlayer(defenderId, Map.of(
-                    "action", "territory_under_attack",
-                    "attackerId", playerId,
-                    "sourceCountryId", sourceCountryId,
-                    "targetCountryId", enemyCountryId,
-                    "attackingTroops", attackingTroops,
-                    "defendingTroops", targetOccupy.getTroops()
-            ));
 
+            enemyUnderAttackMessage(playerId, defenderId, sourceCountryId, enemyCountryId, attackingTroops, targetOccupy);
+            attackingPlayerConfirmation(playerId, enemyCountryId, defenderId, attackingTroops, targetOccupy);
+            broadcastAttack(playerId, defenderId, sourceCountryId, enemyCountryId, attackingTroops, targetOccupy);
 
-            sendToPlayer(playerId, Map.of(
-                    "action", "attack_initiated",
-                    "targetCountryId", enemyCountryId,
-                    "defenderId", defenderId,
-                    "attackingTroops", attackingTroops,
-                    "defendingTroops", targetOccupy.getTroops()
-            ));
+            int[] attackDice = attackerDiceRoll(attackingTroops);
+            int[] defendDice = enemyDiceRoll(targetOccupy.getTroops());
 
+            int[] result = calculateRoundWinner(attackDice, defendDice);
 
-            Map<String, Object> attackBroadcast = new HashMap<>();
-            attackBroadcast.put("action", "attack_in_progress");
-            attackBroadcast.put("attackerId", playerId);
-            attackBroadcast.put("defenderId", defenderId);
-            attackBroadcast.put("sourceCountryId", sourceCountryId);
-            attackBroadcast.put("targetCountryId", enemyCountryId);
-            attackBroadcast.put("attackingTroops", attackingTroops);
-            attackBroadcast.put("defendingTroops", targetOccupy.getTroops());
+            System.out.println("====================================================");
+            System.out.println("RESULTS -> " + Arrays.toString(result));
+            System.out.println("ATTACKER DICE -> " + Arrays.toString(attackDice));
+            System.out.println("DEFENDER DICE -> " + Arrays.toString(defendDice));
+            System.out.println("====================================================");
 
-            for (Long pid : players.keySet()) {
-                if (!pid.equals(playerId) && !pid.equals(defenderId)) {
-                    sendToPlayer(pid, attackBroadcast);
-                }
+            Map<String, Object> diceRolls = new HashMap<>();
+            diceRolls.put("action", "dice_rolls");
+            diceRolls.put("attackerDice", attackDice);
+            diceRolls.put("defenderDice", defendDice);
+            broadcast(diceRolls);
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
 
+            int attackerwins = result[0];
+            int defenderwins = result[1];
+
+
+            sourceOccupy.setTroops(sourceOccupy.getTroops() - attackerwins);
+            targetOccupy.setTroops(targetOccupy.getTroops() - defenderwins);
+
+            if (targetOccupy.getTroops() <= 0) {
+
+                occupies.get(defenderId).removeIf(o -> o.getCountryId() == enemyCountryId);
+
+
+                int moveInTroops = attackingTroops - attackerwins;
+                if (moveInTroops < 1) moveInTroops = 1;
+
+                sourceOccupy.setTroops(sourceOccupy.getTroops() - moveInTroops);
+                occupies.get(playerId).add(new Occupy(playerId, enemyCountryId, moveInTroops));
+            }
+
+            sendMapUpdate();
+
         }
+    }
+    private void reverse(int[] arr) {
+        for (int i = 0; i < arr.length / 2; i++) {
+            int temp = arr[i];
+            arr[i] = arr[arr.length - 1 - i];
+            arr[arr.length - 1 - i] = temp;
+        }
+    }
+
+
+    int calculateDicenumber(){
+        int MAX_DICE_NUMBER = 6;
+        int MIN_DICE_NUMBER = 1;
+        Random random = new Random();
+        return random.nextInt(MAX_DICE_NUMBER - MIN_DICE_NUMBER + 1) + MIN_DICE_NUMBER;
+    }
+
+    int[] attackerDiceRoll(int attackingTroops) {
+        int diceToRoll = Math.min(attackingTroops, 3);
+        int[] attackerDice = new int[diceToRoll];
+        for (int i = 0; i < diceToRoll; i++) {
+            attackerDice[i] = calculateDicenumber();
+        }
+        Arrays.sort(attackerDice);
+        reverse(attackerDice);
+        return attackerDice;
+    }
+
+    int[] enemyDiceRoll(int defendingTroops) {
+        int diceToRoll = Math.min(defendingTroops, 2);
+        int[] defenderDice = new int[diceToRoll];
+        for (int i = 0; i < diceToRoll; i++) {
+            defenderDice[i] = calculateDicenumber();
+        }
+        Arrays.sort(defenderDice);
+        reverse(defenderDice);
+        return defenderDice;
+    }
+    int[] calculateRoundWinner(int[] attackerDice, int[] defenderDice) {
+        int comparisons = Math.min(attackerDice.length, defenderDice.length);
+        int attackerwins = 0;
+        int defenderwins = 0;
+
+        for (int i = 0; i < comparisons; i++) {
+            if (attackerDice[i] > defenderDice[i]) {
+                attackerwins++;
+            } else {
+                defenderwins++;
+            }
+        }
+
+        return new int[]{attackerwins, defenderwins};
+    }
+
+
+    private void broadcastAttack(Long playerId, Long defenderId, long sourceCountryId, long enemyCountryId, int attackingTroops, Occupy targetOccupy) {
+        Map<String, Object> attackBroadcast = new HashMap<>();
+        attackBroadcast.put("action", "attack_in_progress");
+        attackBroadcast.put("attackerId", playerId);
+        attackBroadcast.put("defenderId", defenderId);
+        attackBroadcast.put("sourceCountryId", sourceCountryId);
+        attackBroadcast.put("targetCountryId", enemyCountryId);
+        attackBroadcast.put("attackingTroops", attackingTroops);
+        attackBroadcast.put("defendingTroops", targetOccupy.getTroops());
+
+        for (Long pid : players.keySet()) {
+            if (!pid.equals(playerId) && !pid.equals(defenderId)) {
+                sendToPlayer(pid, attackBroadcast);
+            }
+        }
+    }
+
+    private void attackingPlayerConfirmation(Long playerId, long enemyCountryId, Long defenderId, int attackingTroops, Occupy targetOccupy) {
+        sendToPlayer(playerId, Map.of(
+                "action", "attack_initiated",
+                "targetCountryId", enemyCountryId,
+                "defenderId", defenderId,
+                "attackingTroops", attackingTroops,
+                "defendingTroops", targetOccupy.getTroops()
+        ));
+    }
+
+    private void enemyUnderAttackMessage(Long playerId, Long defenderId, long sourceCountryId, long enemyCountryId, int attackingTroops, Occupy targetOccupy) {
+        sendToPlayer(defenderId, Map.of(
+                "action", "territory_under_attack",
+                "attackerId", playerId,
+                "sourceCountryId", sourceCountryId,
+                "targetCountryId", enemyCountryId,
+                "attackingTroops", attackingTroops,
+                "defendingTroops", targetOccupy.getTroops()
+        ));
     }
 
     private void handleOccupationInput(Long playerId, JsonObject input) {
