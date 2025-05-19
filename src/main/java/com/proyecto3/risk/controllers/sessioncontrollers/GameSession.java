@@ -354,7 +354,7 @@ public class GameSession {
             attackingPlayerConfirmation(playerId, enemyCountryId, defenderId, attackingTroops, targetOccupy);
             broadcastAttack(playerId, defenderId, sourceCountryId, enemyCountryId, attackingTroops, targetOccupy);
 
-            // Roll dice ONCE
+
             int[] attackDice = attackerDiceRoll(attackingTroops);
             int[] defendDice = enemyDiceRoll(targetOccupy.getTroops());
 
@@ -364,7 +364,7 @@ public class GameSession {
             System.out.println("DEFENDER DICE -> " + Arrays.toString(defendDice));
             System.out.println("====================================================");
 
-            // Send to players
+
             Map<String, Object> diceRolls = new HashMap<>();
             diceRolls.put("action", "dice_rolls");
             diceRolls.put("attackerDice", attackDice);
@@ -377,7 +377,7 @@ public class GameSession {
                 throw new RuntimeException(e);
             }
 
-            // Calculate result
+
             int attackerwins = 0;
             int defenderwins = 0;
             int comparisons = Math.min(attackDice.length, defendDice.length);
@@ -385,16 +385,16 @@ public class GameSession {
             for (int i = 0; i < comparisons; i++) {
                 if (attackDice[i] > defendDice[i]) {
                     attackerwins++;
-                } else {
+                } else if(attackDice[i] <= defendDice[i]) {
                     defenderwins++;
                 }
             }
 
-            // Update troop counts
-            sourceOccupy.setTroops(sourceOccupy.getTroops() - attackerwins);
-            targetOccupy.setTroops(targetOccupy.getTroops() - defenderwins);
 
-            // Capture logic
+            sourceOccupy.setTroops(sourceOccupy.getTroops() - defenderwins);
+            targetOccupy.setTroops(targetOccupy.getTroops() - attackerwins);
+
+
             if (targetOccupy.getTroops() <= 0) {
                 int movingTroops = attackingTroops - attackerwins;
 
