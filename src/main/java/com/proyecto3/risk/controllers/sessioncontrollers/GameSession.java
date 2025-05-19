@@ -358,24 +358,11 @@ public class GameSession {
             int[] attackDice = attackerDiceRoll(attackingTroops);
             int[] defendDice = enemyDiceRoll(targetOccupy.getTroops());
 
-            // Show rolls
-            System.out.println("====================================================");
-            System.out.println("ATTACKER DICE -> " + Arrays.toString(attackDice));
-            System.out.println("DEFENDER DICE -> " + Arrays.toString(defendDice));
-            System.out.println("====================================================");
-
-
             Map<String, Object> diceRolls = new HashMap<>();
             diceRolls.put("action", "dice_rolls");
             diceRolls.put("attackerDice", attackDice);
             diceRolls.put("defenderDice", defendDice);
             broadcast(diceRolls);
-
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
 
 
             int attackerwins = 0;
@@ -398,10 +385,9 @@ public class GameSession {
             if (targetOccupy.getTroops() <= 0) {
                 int movingTroops = attackingTroops - attackerwins;
 
-                // Remove from defender
                 occupies.get(defenderId).removeIf(o -> o.getCountryId() == enemyCountryId);
 
-                // Add to attacker
+
                 Occupy newOccupy = new Occupy();
                 newOccupy.setPlayerId(playerId);
                 newOccupy.setCountryId(enemyCountryId);
