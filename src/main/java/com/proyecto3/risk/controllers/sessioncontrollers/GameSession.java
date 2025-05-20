@@ -36,7 +36,6 @@ public class GameSession {
     private Long lastAttackTargetCountryId;
 
 
-
     private final CountryService countryService;
     private final BorderService borderService;
 
@@ -162,7 +161,7 @@ public class GameSession {
         broadcast(gameStartMessage);
 
 
-     autoFillTerritories();
+        autoFillTerritories();
 
 
         if (stage == GameStage.OCCUPATION) {
@@ -225,6 +224,7 @@ public class GameSession {
             gameThread.interrupt();
         }
     }
+
     public void handlePlayerInput(Long playerId, JsonObject input) {
         System.out.println("Handling player input: " + input.toString() + " from player: " + playerId);
         System.out.println("Current game state: Stage=" + stage + ", Phase=" + attackPhase);
@@ -251,6 +251,7 @@ public class GameSession {
             if (attackPhase == null) {
                 System.out.println("Attack phase was null, setting to SELECTING_ATTACK");
                 attackPhase = AttackPhase.SELECTING_ATTACK;
+                sendMapUpdate();
             }
 
             if (attackPhase == AttackPhase.SELECTING_ATTACK || attackPhase == AttackPhase.FINISHED) {
@@ -298,6 +299,7 @@ public class GameSession {
 
         return true;
     }
+
     private void handleAttackingInput(Long playerId, JsonObject input) {
         System.out.println("ATTACK DEBUG - Received input: " + input.toString());
         System.out.println("ATTACK DEBUG - Current stage: " + stage + ", phase: " + attackPhase);
@@ -421,6 +423,7 @@ public class GameSession {
             enemyUnderAttackMessage(playerId, defenderId, sourceCountryId, enemyCountryId, attackingTroops, targetOccupy);
             attackingPlayerConfirmation(playerId, enemyCountryId, defenderId, attackingTroops, targetOccupy);
             broadcastAttack(playerId, defenderId, sourceCountryId, enemyCountryId, attackingTroops, targetOccupy);
+            sendMapUpdate();
 
 
             int[] attackDice = attackerDiceRoll(attackingTroops);
@@ -704,7 +707,6 @@ public class GameSession {
     }
 
 
-
     private void broadcastAttack(Long playerId, Long defenderId, long sourceCountryId, long enemyCountryId, int attackingTroops, Occupy targetOccupy) {
         Map<String, Object> attackBroadcast = new HashMap<>();
         attackBroadcast.put("action", "attack_in_progress");
@@ -778,7 +780,8 @@ public class GameSession {
             attackPhase = AttackPhase.SELECTING_ATTACK;
 
             broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
-           // nextTurn();
+
+            nextTurn();
         } else {
             Map<String, Object> occupationUpdate = new HashMap<>();
             occupationUpdate.put("action", "territory_occupied");
@@ -797,13 +800,13 @@ public class GameSession {
         Map<Long, Integer> countryTroopMap = new HashMap<>();
         Map<Long, Long> countryOwnerMap = new HashMap<>();
 
-        // Initialize all countries with zero troops and no owner
+
         for (Country country : allCountrys) {
             countryTroopMap.put(country.getId(), 0);
             countryOwnerMap.put(country.getId(), null);  // No owner initially
         }
 
-        // Update the maps with occupation data
+
         for (List<Occupy> occupyList : occupies.values()) {
             for (Occupy occupy : occupyList) {
                 long countryId = occupy.getCountryId();
@@ -824,7 +827,7 @@ public class GameSession {
             countryData.put("countryId", countryId);
             countryData.put("troops", entry.getValue());
 
-            // Include the player ID who owns this country (may be null if unoccupied)
+
             Long ownerId = countryOwnerMap.get(countryId);
             if (ownerId != null) {
                 countryData.put("playerId", ownerId);
@@ -833,7 +836,7 @@ public class GameSession {
             countries.add(countryData);
         }
 
-        // Broadcast the map update to all players
+
         Map<String, Object> message = new HashMap<>();
         message.put("action", "map_update");
         message.put("countries", countries);
@@ -917,10 +920,13 @@ public class GameSession {
         Map<String, Object> turnMessage = new HashMap<>();
         turnMessage.put("action", "player_turn");
         turnMessage.put("playerId", currentPlayerId);
+
         broadcast(turnMessage);
         sendMapUpdate();
 
+
     }
+
 
     private int calculateNumOfTroops(int maxPlayers) {
         int numOfTroops = 0;
@@ -1018,7 +1024,7 @@ public class GameSession {
         }
 
 
-      //  sendDetailedMapUpdate();
+        //  sendDetailedMapUpdate();
         //debugTerritories();
 
 
@@ -1030,8 +1036,7 @@ public class GameSession {
 
 
         Map<String, Object> turnMessage = new HashMap<>();
-        turnMessage.put("action", "player_turn");
-        turnMessage.put("playerId", currentPlayerId);
+        nextTurn();
         broadcast(turnMessage);
 
         System.out.println("Auto-fill complete. Game is now in ATTACKING stage. Current player: " + currentPlayerId);
@@ -1068,13 +1073,14 @@ public class GameSession {
             countriesData.add(countryData);
         }
 
-         Map<String, Object> mapUpdateMessage = new HashMap<>();
+        Map<String, Object> mapUpdateMessage = new HashMap<>();
         mapUpdateMessage.put("action", "map_update");
         mapUpdateMessage.put("countries", countriesData);
         broadcast(mapUpdateMessage);
 
         System.out.println("Sent detailed map update with " + countriesData.size() + " countries");
     }
+
     // Add this method to debug territory data
     private void debugTerritories() {
         System.out.println("=== TERRITORY DEBUG ===");
