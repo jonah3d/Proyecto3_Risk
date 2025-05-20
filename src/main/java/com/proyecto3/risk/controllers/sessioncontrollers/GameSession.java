@@ -214,11 +214,9 @@ public class GameSession {
 
         state = GameState.FINISHED;
 
-
         Map<String, Object> gameEndMessage = new HashMap<>();
         gameEndMessage.put("action", "game_ended");
         broadcast(gameEndMessage);
-
 
         if (gameThread != null && gameThread.isAlive()) {
             gameThread.interrupt();
@@ -226,49 +224,48 @@ public class GameSession {
     }
 
     public void handlePlayerInput(Long playerId, JsonObject input) {
-        System.out.println("Handling player input: " + input.toString() + " from player: " + playerId);
-        System.out.println("Current game state: Stage=" + stage + ", Phase=" + attackPhase);
+     // System.out.println("Handling player input: " + input.toString() + " from player: " + playerId);
+        // System.out.println("Current game state: Stage=" + stage + ", Phase=" + attackPhase);
 
         if (state != GameState.PLAYING) {
-            System.out.println("Game not in playing state");
+          //  System.out.println("Game not in playing state");
             return;
         }
 
         if (!playerId.equals(currentPlayerId)) {
-            System.out.println("Not player's turn: " + playerId + " vs current: " + currentPlayerId);
+           // System.out.println("Not player's turn: " + playerId + " vs current: " + currentPlayerId);
             sendToPlayer(playerId, Map.of("action", "error", "message", "It's not your turn"));
             return;
         }
 
         if (stage == GameStage.OCCUPATION) {
-            System.out.println("Handling occupation input");
+           // System.out.println("Handling occupation input");
             handleOccupationInput(playerId, input);
             return;
         }
 
         if (stage == GameStage.ATTACKING) {
-            System.out.println("In attacking stage with phase: " + attackPhase);
+           // System.out.println("In attacking stage with phase: " + attackPhase);
             if (attackPhase == null) {
-                System.out.println("Attack phase was null, setting to SELECTING_ATTACK");
+              //  System.out.println("Attack phase was null, setting to SELECTING_ATTACK");
                 attackPhase = AttackPhase.SELECTING_ATTACK;
                 sendMapUpdate();
             }
 
             if (attackPhase == AttackPhase.SELECTING_ATTACK || attackPhase == AttackPhase.FINISHED) {
-                System.out.println("Handling attack selection input");
+             //   System.out.println("Handling attack selection input");
                 handleAttackingInput(playerId, input);
             } else if (attackPhase == AttackPhase.MOVING_TROOPS) {
-                System.out.println("Handling attack move in");
+             //   System.out.println("Handling attack move in");
                 handleAttackMoveIn(playerId, input);
             }
         } else if (stage == GameStage.REFORCE) {
-            System.out.println("Handling reforce input");
+        //    System.out.println("Handling reforce input");
             handleReforceInput(playerId, input);
         }
 
         broadcastGameState();
     }
-
 
     boolean checkAttackingInput(Long playerId, JsonObject input) {
         if (!input.has("type")) {
@@ -495,7 +492,6 @@ public class GameSession {
         }
     }
 
-
     private void handleAttackMoveIn(Long playerId, JsonObject input) {
         // This is called when a player is moving troops after conquering a territory
         if (!input.has("type") || !input.get("type").getAsString().equals("move_troops")) {
@@ -566,8 +562,7 @@ public class GameSession {
 
         sendMapUpdate();
     }
-
-
+    
     private void handleReforceInput(Long playerId, JsonObject input) {
         if (!input.has("type")) {
             sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'type' field"));
@@ -576,16 +571,18 @@ public class GameSession {
 
         String type = input.get("type").getAsString();
 
-        // Check if player wants to skip fortification and end turn
+
         if (type.equals("end_turn")) {
-            // Skip fortification and go to next player's turn
+
+            stage = GameStage.ATTACKING;
+            attackPhase = AttackPhase.SELECTING_ATTACK;
             nextTurn();
             return;
         }
 
-        // Handle fortification move
+
         if (type.equals("fortify")) {
-            // Validate required fields
+
             if (!input.has("sourceCountryId") || !input.has("targetCountryId") || !input.has("troops")) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "Missing required fields for fortification"));
                 return;
@@ -595,14 +592,13 @@ public class GameSession {
             long targetCountryId = input.get("targetCountryId").getAsLong();
             int troopsToMove = input.get("troops").getAsInt();
 
-            // Check that player owns both territories
+
             List<Occupy> playerOccupies = occupies.get(playerId);
             if (playerOccupies == null) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You don't occupy any territories"));
                 return;
             }
 
-            // Find source territory occupation
             Occupy sourceOccupy = playerOccupies.stream()
                     .filter(o -> o.getCountryId() == sourceCountryId)
                     .findFirst()
@@ -613,7 +609,7 @@ public class GameSession {
                 return;
             }
 
-            // Find target territory occupation
+
             Occupy targetOccupy = playerOccupies.stream()
                     .filter(o -> o.getCountryId() == targetCountryId)
                     .findFirst()
@@ -624,7 +620,7 @@ public class GameSession {
                 return;
             }
 
-            // Check if territories are adjacent using BorderService
+
             List<Border> borders = borderService.findByCountryId(sourceCountryId);
             boolean isAdjacent = borders.stream().anyMatch(border ->
                     (border.getCountry1Id().equals(sourceCountryId) && border.getCountry2Id().equals(targetCountryId)) ||
@@ -636,7 +632,7 @@ public class GameSession {
                 return;
             }
 
-            // Validate troop movement
+
             int currentTroops = sourceOccupy.getTroops();
             if (troopsToMove < 1) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You must move at least one troop"));
@@ -648,14 +644,14 @@ public class GameSession {
                 return;
             }
 
-            // Perform the troop movement
+
             sourceOccupy.setTroops(sourceOccupy.getTroops() - troopsToMove);
             targetOccupy.setTroops(targetOccupy.getTroops() + troopsToMove);
 
-            // Notify player of successful move
+
             sendToPlayer(playerId, Map.of("action", "info", "message", "Fortification complete. Your turn has ended."));
 
-            // Broadcast fortification to all players
+
             Map<String, Object> fortificationMessage = new HashMap<>();
             fortificationMessage.put("action", "fortification");
             fortificationMessage.put("playerId", playerId);
@@ -705,8 +701,7 @@ public class GameSession {
             arr[arr.length - 1 - i] = temp;
         }
     }
-
-
+    
     private void broadcastAttack(Long playerId, Long defenderId, long sourceCountryId, long enemyCountryId, int attackingTroops, Occupy targetOccupy) {
         Map<String, Object> attackBroadcast = new HashMap<>();
         attackBroadcast.put("action", "attack_in_progress");
@@ -769,7 +764,6 @@ public class GameSession {
 
         occupies.computeIfAbsent(playerId, k -> new ArrayList<>()).add(new Occupy(playerId, countryId, numoftroops));
 
-
         troopsToPlace.put(playerId, troopsToPlace.get(playerId) - 1);
 
 
@@ -795,7 +789,6 @@ public class GameSession {
 
     }
 
-
     private void sendMapUpdate() {
         Map<Long, Integer> countryTroopMap = new HashMap<>();
         Map<Long, Long> countryOwnerMap = new HashMap<>();
@@ -814,12 +807,11 @@ public class GameSession {
                 long playerId = occupy.getPlayerId();
 
                 countryTroopMap.merge(countryId, troops, Integer::sum);
-                // Set or update the owner of the country
                 countryOwnerMap.put(countryId, playerId);
             }
         }
 
-        // Create the list of country data to send
+
         List<Map<String, Object>> countries = new ArrayList<>();
         for (Map.Entry<Long, Integer> entry : countryTroopMap.entrySet()) {
             Long countryId = entry.getKey();
@@ -844,7 +836,6 @@ public class GameSession {
         broadcast(message);
     }
 
-
     private void broadcastGameState() {
 
         Map<String, Object> gameState = new HashMap<>();
@@ -867,7 +858,6 @@ public class GameSession {
             playerSession.sendJsonMessage(message);
         }
     }
-
 
     public boolean hasPlayer(Long playerId) {
         return players.containsKey(playerId);
@@ -893,7 +883,6 @@ public class GameSession {
         return players.values();
     }
 
-
     private Long currentPlayerId;
 
     private void chooseInitialPlayer() {
@@ -909,7 +898,6 @@ public class GameSession {
         broadcast(turnMessage);
     }
 
-
     private void nextTurn() {
         List<Long> playerIds = new ArrayList<>(players.keySet());
         if (playerIds.isEmpty()) return;
@@ -924,9 +912,7 @@ public class GameSession {
         broadcast(turnMessage);
         sendMapUpdate();
 
-
     }
-
 
     private int calculateNumOfTroops(int maxPlayers) {
         int numOfTroops = 0;
@@ -952,10 +938,8 @@ public class GameSession {
         return numOfTroops;
     }
 
-
     private void autoFillTerritories() {
         System.out.println("Auto-filling territories for testing...");
-
 
         occupies.clear();
 
@@ -970,7 +954,7 @@ public class GameSession {
             return;
         }
 
-        System.out.println("Assigning territories to " + playerIds.size() + " players...");
+        //System.out.println("Assigning territories to " + playerIds.size() + " players...");
 
 
         int countriesPerPlayer = allCountriesCopy.size() / playerIds.size();
@@ -994,12 +978,10 @@ public class GameSession {
                 int troopsPerTerritory = 3;
 
                 playerOccupies.add(new Occupy(playerId, country.getId(), troopsPerTerritory));
-                System.out.println("Assigned country " + country.getId() + " to player " + playerId + " with " + troopsPerTerritory + " troops");
+                //System.out.println("Assigned country " + country.getId() + " to player " + playerId + " with " + troopsPerTerritory + " troops");
             }
 
-
             occupies.put(playerId, playerOccupies);
-
 
             troopsToPlace.put(playerId, 0);
         }
@@ -1023,11 +1005,6 @@ public class GameSession {
             Thread.currentThread().interrupt();
         }
 
-
-        //  sendDetailedMapUpdate();
-        //debugTerritories();
-
-
         try {
             Thread.sleep(200);
         } catch (InterruptedException e) {
@@ -1039,7 +1016,7 @@ public class GameSession {
         nextTurn();
         broadcast(turnMessage);
 
-        System.out.println("Auto-fill complete. Game is now in ATTACKING stage. Current player: " + currentPlayerId);
+      //  System.out.println("Auto-fill complete. Game is now in ATTACKING stage. Current player: " + currentPlayerId);
     }
 
     private void sendDetailedMapUpdate() {
@@ -1081,12 +1058,11 @@ public class GameSession {
         System.out.println("Sent detailed map update with " + countriesData.size() + " countries");
     }
 
-    // Add this method to debug territory data
     private void debugTerritories() {
         System.out.println("=== TERRITORY DEBUG ===");
         System.out.println("Total countries: " + allCountrys.size());
 
-        // Print all borders
+
         System.out.println("--- BORDERS ---");
         for (Country country : allCountrys) {
             List<Border> borders = borderService.findByCountryId(country.getId());
@@ -1097,7 +1073,7 @@ public class GameSession {
                             .collect(Collectors.joining(", ")));
         }
 
-        // Print all occupations
+
         System.out.println("--- OCCUPATIONS ---");
         for (Map.Entry<Long, List<Occupy>> entry : occupies.entrySet()) {
             Long playerId = entry.getKey();
