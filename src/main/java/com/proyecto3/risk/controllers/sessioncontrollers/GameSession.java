@@ -161,7 +161,7 @@ public class GameSession {
         broadcast(gameStartMessage);
 
 
-       // autoFillTerritories();
+       autoFillTerritories();
 
 
         if (stage == GameStage.OCCUPATION) {
@@ -978,7 +978,7 @@ public class GameSession {
                 int troopsPerTerritory = 3;
 
                 playerOccupies.add(new Occupy(playerId, country.getId(), troopsPerTerritory));
-                //System.out.println("Assigned country " + country.getId() + " to player " + playerId + " with " + troopsPerTerritory + " troops");
+                System.out.println("Assigned country " + country.getId() + " to player " + playerId + " with " + troopsPerTerritory + " troops");
             }
 
             occupies.put(playerId, playerOccupies);
