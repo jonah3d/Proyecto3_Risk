@@ -324,13 +324,17 @@ public class GameSession {
             return;
         }
 
-
         if (type.equals("attack")) {
             System.out.println("Processing attack command");
+
+            // Debug territory state before processing attack
+            debugTerritoryState();
+
             if (!checkAttackingInput(playerId, input)) {
                 System.out.println("Attack input validation failed");
                 return;
             }
+
             long sourceCountryId = input.get("countryId").getAsLong();
             int attackingTroops = input.get("troops").getAsInt();
             long enemyCountryId = input.get("enemyCountryId").getAsLong();
@@ -342,7 +346,6 @@ public class GameSession {
             lastAttackSourceCountryId = sourceCountryId;
             lastAttackTargetCountryId = enemyCountryId;
 
-
             List<Occupy> playerOccupies = occupies.get(playerId);
             if (playerOccupies == null) {
                 System.out.println("ERROR - Player has no occupied territories");
@@ -352,10 +355,16 @@ public class GameSession {
 
             System.out.println("Player occupies " + playerOccupies.size() + " territories");
 
-            Occupy sourceOccupy = playerOccupies.stream()
-                    .filter(o -> o.getCountryId() == sourceCountryId)
-                    .findFirst()
-                    .orElse(null);
+            // Use proper Long equals comparison and detailed debug output
+            Occupy sourceOccupy = null;
+            for (Occupy occupy : playerOccupies) {
+                if (occupy.getCountryId() == sourceCountryId) {
+                    sourceOccupy = occupy;
+                    System.out.println("Found source territory #" + sourceCountryId +
+                            " with " + occupy.getTroops() + " troops");
+                    break;
+                }
+            }
 
             if (sourceOccupy == null) {
                 System.out.println("ERROR - Player does not occupy source country " + sourceCountryId);
@@ -366,12 +375,17 @@ public class GameSession {
             int currentTroops = sourceOccupy.getTroops();
             System.out.println("Source country has " + currentTroops + " troops");
 
-            if (currentTroops - attackingTroops < 1) {
+            System.out.println("****---------------------------------------------------****");
+            System.out.println("Current troops: " + currentTroops);
+            System.out.println("Attacking troops: " + attackingTroops);
+            System.out.println("Troops to move: " + (currentTroops - attackingTroops));
+            System.out.println("****---------------------------------------------------****");
+
+            if (currentTroops <= attackingTroops) {
                 System.out.println("ERROR - Not enough troops (need to leave 1 behind)");
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You must leave at least one troop behind."));
                 return;
             }
-
 
             List<Border> borders = borderService.findByCountryId(sourceCountryId);
             List<Long> attackableZones = new ArrayList<>();
@@ -794,7 +808,6 @@ public class GameSession {
                 "defendingTroops", targetOccupy.getTroops()
         ));
     }
-
     private void handleOccupationInput(Long playerId, JsonObject input) {
         if (!input.has("countryId")) {
             sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'countryId' for occupation"));
@@ -802,47 +815,106 @@ public class GameSession {
         }
 
         long countryId = input.get("countryId").getAsLong();
-        int numoftroops = input.get("troops").getAsInt();
-        if (numoftroops != 1) {
-            sendToPlayer(playerId, Map.of("action", "error", "message", "You can only place one troop"));
+
+        // Make sure troops field exists
+        if (!input.has("troops")) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'troops' field"));
             return;
         }
 
+        int numOfTroops = input.get("troops").getAsInt();
 
-        boolean alreadyOccupied = occupies.values().stream().flatMap(List::stream).anyMatch(o -> o.getCountryId() == countryId && !o.getPlayerId().equals(playerId));
+        // Validate troops value
+        if (numOfTroops <= 0) {
+            sendToPlayer(playerId, Map.of("action", "error", "message", "You must place at least one troop"));
+            return;
+        }
+
+        // Check if player has enough troops to place
+        Integer remainingTroops = troopsToPlace.getOrDefault(playerId, 0);
+        if (remainingTroops < numOfTroops) {
+            sendToPlayer(playerId, Map.of("action", "error",
+                    "message", "You only have " + remainingTroops + " troops to place"));
+            return;
+        }
+
+        // Check if territory is already occupied by another player
+        boolean alreadyOccupied = occupies.values().stream()
+                .flatMap(List::stream)
+                .anyMatch(o -> o.getCountryId() == countryId && !o.getPlayerId().equals(playerId));
 
         if (alreadyOccupied) {
             sendToPlayer(playerId, Map.of("action", "error", "message", "Territory already occupied by another player"));
             return;
         }
 
+        // Check if player already owns this territory (add troops instead of creating new occupation)
+        List<Occupy> playerOccupies = occupies.computeIfAbsent(playerId, k -> new ArrayList<>());
+        Occupy existingOccupation = playerOccupies.stream()
+                .filter(o -> o.getCountryId() == countryId)
+                .findFirst()
+                .orElse(null);
 
-        occupies.computeIfAbsent(playerId, k -> new ArrayList<>()).add(new Occupy(playerId, countryId, numoftroops));
+        if (existingOccupation != null) {
+            // Player already owns this territory - add troops instead
+            System.out.println("Player " + playerId + " adding " + numOfTroops +
+                    " troops to existing territory #" + countryId);
+            existingOccupation.setTroops(existingOccupation.getTroops() + numOfTroops);
+        } else {
+            // New territory occupation
+            System.out.println("Player " + playerId + " occupying new territory #" +
+                    countryId + " with " + numOfTroops + " troops");
+            playerOccupies.add(new Occupy(playerId, countryId, numOfTroops));
+        }
 
-        troopsToPlace.put(playerId, troopsToPlace.get(playerId) - 1);
+        // Subtract from available troops
+        troopsToPlace.put(playerId, remainingTroops - numOfTroops);
+        System.out.println("Player " + playerId + " has " + troopsToPlace.get(playerId) + " troops left to place");
 
+        // Debug territory state after occupation
+        debugTerritoryState();
 
+        // Check if occupation phase is complete
         boolean allDone = troopsToPlace.values().stream().allMatch(t -> t <= 0);
 
         if (allDone) {
             stage = GameStage.ATTACKING;
             attackPhase = AttackPhase.SELECTING_ATTACK;
-
-           // broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
             broadcastGameStage();
-
             nextTurn();
         } else {
+            // Broadcast the territory occupation update
             Map<String, Object> occupationUpdate = new HashMap<>();
             occupationUpdate.put("action", "territory_occupied");
             occupationUpdate.put("playerId", playerId);
             occupationUpdate.put("territoryId", countryId);
-            occupationUpdate.put("troops", numoftroops);
+            occupationUpdate.put("troops", numOfTroops);
             broadcast(occupationUpdate);
+
+            // Update the map to show current territory state
+            sendMapUpdate();
+
+            // Move to next player's turn
             nextTurn();
         }
+    }private void debugTerritoryState() {
+        System.out.println("\n=== TERRITORY STATE INSPECTION ===");
+        System.out.println("Current player ID: " + currentPlayerId);
+        System.out.println("Total occupied territories in system: " +
+                occupies.values().stream().mapToInt(List::size).sum());
 
+        // Print all player territories
+        for (Map.Entry<Long, List<Occupy>> entry : occupies.entrySet()) {
+            Long pid = entry.getKey();
+            List<Occupy> territories = entry.getValue();
+            System.out.println("\nPlayer " + pid + " occupies " + territories.size() + " territories:");
 
+            for (Occupy territory : territories) {
+                System.out.println("  Territory #" + territory.getCountryId() +
+                        " with " + territory.getTroops() + " troops");
+            }
+        }
+        System.out.println("=================================\n");
     }
 
     private void sendMapUpdate() {
