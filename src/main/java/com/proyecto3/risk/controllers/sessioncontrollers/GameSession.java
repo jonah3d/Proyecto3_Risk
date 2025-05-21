@@ -670,7 +670,7 @@ public class GameSession {
             sendMapUpdate();
 
             broadcastGameState();
-            broadcastGameState();
+            broadcastGameStage();
             nextTurn();
         }
     }
