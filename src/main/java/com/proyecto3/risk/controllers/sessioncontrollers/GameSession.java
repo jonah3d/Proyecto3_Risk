@@ -366,7 +366,7 @@ public class GameSession {
             int currentTroops = sourceOccupy.getTroops();
             System.out.println("Source country has " + currentTroops + " troops");
 
-            if (currentTroops <= attackingTroops + 1) {
+            if (currentTroops - attackingTroops < 1) {
                 System.out.println("ERROR - Not enough troops (need to leave 1 behind)");
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You must leave at least one troop behind."));
                 return;
