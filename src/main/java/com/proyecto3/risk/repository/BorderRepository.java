@@ -12,8 +12,9 @@ import java.util.List;
 @Repository
 public interface BorderRepository extends JpaRepository<Border, BorderId> {
 
-    @Query("SELECT b FROM Border b WHERE b.country1.id = :countryId")
+    @Query("SELECT b FROM Border b WHERE b.country1Id = :countryId OR b.country2Id = :countryId")
     List<Border> findByCountryId(@Param("countryId") Long countryId);
+
 /*
     @Query("SELECT b FROM Border b WHERE b.country1.id IN :countryIds OR b.country2.id IN :countryIds")
     List<Border> findByCountryIds(@Param("countryIds") List<Long> countryIds);*/

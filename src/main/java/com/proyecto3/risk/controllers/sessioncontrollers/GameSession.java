@@ -10,6 +10,7 @@ import com.proyecto3.risk.repository.CountryRepository;
 import com.proyecto3.risk.service.BorderService;
 import com.proyecto3.risk.service.CountryService;
 import com.proyecto3.risk.service.CountryServiceImp;
+import com.proyecto3.risk.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -38,6 +39,7 @@ public class GameSession {
 
     private final CountryService countryService;
     private final BorderService borderService;
+    private final UserService userService;
 
     public enum GameState {
         WAITING, PLAYING, FINISHED
@@ -54,7 +56,7 @@ public class GameSession {
     }
 
 
-    public GameSession(String token, int maxPlayers, boolean isPublic, String gameName, Long id, CountryService countryService, BorderService borderService) {
+    public GameSession(String token, int maxPlayers, boolean isPublic, String gameName, Long id, CountryService countryService, BorderService borderService, UserService userService) {
         this.token = token;
         this.maxPlayers = maxPlayers;
         this.isPublic = isPublic;
@@ -62,6 +64,7 @@ public class GameSession {
         this.gameName = gameName;
         this.countryService = countryService;
         this.borderService = borderService;
+        this.userService = userService;
 
         allCountrys.clear();
         allCountrys = countryService.getAllCountries();
@@ -138,6 +141,9 @@ public class GameSession {
     }
 
     private void broadcastPlayerList() {
+
+
+
         Map<String, Object> playerListMessage = new HashMap<>();
         playerListMessage.put("action", "player_list");
         playerListMessage.put("players", players.values().stream().map(ps -> ps.getPlayer().getId()).collect(Collectors.toList()));

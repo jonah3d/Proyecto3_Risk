@@ -30,6 +30,7 @@ public class GameController {
     @Autowired
     private UserService userService;
 
+
     private final Gson gson = new Gson();
 
     public void handleConnect(WebSocketSession session) {
@@ -180,10 +181,13 @@ public class GameController {
 
         boolean joined = gameManager.joinGame(gameId, playerSession);
 
+
+
         if (joined) {
             Map<String, Object> response = new HashMap<>();
             response.put("action", "joined_game");
             response.put("token", gameId);
+         //   response.put("playerId", playerUser);
 
             sessionManager.sendJsonMessage(session, response);
         } else {
