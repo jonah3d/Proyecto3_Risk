@@ -428,6 +428,12 @@ public class GameSession {
             broadcastAttack(playerId, defenderId, sourceCountryId, enemyCountryId, attackingTroops, targetOccupy);
             sendMapUpdate();
 
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
 
             int[] attackDice = attackerDiceRoll(attackingTroops);
             int[] defendDice = enemyDiceRoll(targetOccupy.getTroops());
