@@ -167,7 +167,7 @@ public class GameSession {
         broadcast(gameStartMessage);
 
 
-       //autoFillTerritories();
+       autoFillTerritories();
 
 
         if (stage == GameStage.OCCUPATION) {
@@ -505,7 +505,7 @@ public class GameSession {
     }
 
     private void handleAttackMoveIn(Long playerId, JsonObject input) {
-        // This is called when a player is moving troops after conquering a territory
+
         if (!input.has("type") || !input.get("type").getAsString().equals("move_troops")) {
             sendToPlayer(playerId, Map.of("action", "error", "message", "Invalid or missing type for troop movement"));
             return;
@@ -539,7 +539,7 @@ public class GameSession {
 
         int currentTroops = sourceOccupy.getTroops();
 
-        // Validate troop movement
+
         if (currentTroops - troopsToMove < 1) {
             sendToPlayer(playerId, Map.of("action", "error", "message", "You must leave at least one troop behind."));
             return;
@@ -574,7 +574,7 @@ public class GameSession {
 
         sendMapUpdate();
     }
-    
+
     private void handleReforceInput(Long playerId, JsonObject input) {
         if (!input.has("type")) {
             sendToPlayer(playerId, Map.of("action", "error", "message", "Missing 'type' field"));
@@ -583,9 +583,7 @@ public class GameSession {
 
         String type = input.get("type").getAsString();
 
-
         if (type.equals("end_turn")) {
-
             stage = GameStage.ATTACKING;
             attackPhase = AttackPhase.SELECTING_ATTACK;
             sendMapUpdate();
@@ -594,9 +592,7 @@ public class GameSession {
             return;
         }
 
-
         if (type.equals("fortify")) {
-
             if (!input.has("sourceCountryId") || !input.has("targetCountryId") || !input.has("troops")) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "Missing required fields for fortification"));
                 return;
@@ -606,12 +602,12 @@ public class GameSession {
             long targetCountryId = input.get("targetCountryId").getAsLong();
             int troopsToMove = input.get("troops").getAsInt();
 
-
             List<Occupy> playerOccupies = occupies.get(playerId);
             if (playerOccupies == null) {
                 sendToPlayer(playerId, Map.of("action", "error", "message", "You don't occupy any territories"));
                 return;
             }
+
 
             Occupy sourceOccupy = playerOccupies.stream()
                     .filter(o -> o.getCountryId() == sourceCountryId)
@@ -634,15 +630,9 @@ public class GameSession {
                 return;
             }
 
-
-            List<Border> borders = borderService.findByCountryId(sourceCountryId);
-            boolean isAdjacent = borders.stream().anyMatch(border ->
-                    (border.getCountry1Id().equals(sourceCountryId) && border.getCountry2Id().equals(targetCountryId)) ||
-                            (border.getCountry1Id().equals(targetCountryId) && border.getCountry2Id().equals(sourceCountryId))
-            );
-
-            if (!isAdjacent) {
-                sendToPlayer(playerId, Map.of("action", "error", "message", "Territories must be adjacent for fortification"));
+            // Check if there's a valid path between source and target
+            if (!isValidPath(sourceCountryId, targetCountryId, playerId)) {
+                sendToPlayer(playerId, Map.of("action", "error", "message", "No valid path between these territories"));
                 return;
             }
 
@@ -675,14 +665,63 @@ public class GameSession {
             broadcast(fortificationMessage);
 
 
-
-           sendMapUpdate();
-
-       //     broadcastGameState();
-      //      broadcastGameStage();
-       //     nextTurn();
+            sendMapUpdate();
+            stage = GameStage.ATTACKING;
+            attackPhase = AttackPhase.SELECTING_ATTACK;
+            broadcastGameStage();
+            nextTurn();
         }
     }
+
+
+    private boolean isValidPath(long sourceCountryId, long targetCountryId, Long playerId) {
+        // If source and target are the same, return false as it makes no sense
+        if (sourceCountryId == targetCountryId) {
+
+            return false;
+        }
+
+        // Get all territories owned by the player
+        Set<Long> playerTerritories = occupies.get(playerId).stream()
+                .map(Occupy::getCountryId)
+                .collect(Collectors.toSet());
+
+        // BFS to find path
+        Queue<Long> queue = new LinkedList<>();
+        Set<Long> visited = new HashSet<>();
+
+        queue.add(sourceCountryId);
+        visited.add(sourceCountryId);
+
+        while (!queue.isEmpty()) {
+            Long currentCountryId = queue.poll();
+
+            // If we reached the target, a path exists
+            if (currentCountryId == targetCountryId) {
+                return true;
+            }
+
+            // Get all neighboring territories
+            List<Border> borders = borderService.findByCountryId(currentCountryId);
+
+            for (Border border : borders) {
+                // Get the ID of the neighboring territory
+                Long neighborId = border.getCountry1Id().equals(currentCountryId)
+                        ? border.getCountry2Id()
+                        : border.getCountry1Id();
+
+                // If the neighboring territory is owned by the player and not visited yet
+                if (playerTerritories.contains(neighborId) && !visited.contains(neighborId)) {
+                    queue.add(neighborId);
+                    visited.add(neighborId);
+                }
+            }
+        }
+
+        // No path found
+        return false;
+    }
+
 
     int calculateDicenumber() {
         return new Random().nextInt(6) + 1;
