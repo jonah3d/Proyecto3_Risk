@@ -558,7 +558,7 @@ public class GameSession {
 
 
         attackPhase = AttackPhase.SELECTING_ATTACK;
-
+        broadcastGameState();
 
         sendToPlayer(playerId, Map.of(
                 "action", "info",
@@ -669,7 +669,8 @@ public class GameSession {
 
             sendMapUpdate();
 
-
+            broadcastGameState();
+            broadcastGameState();
             nextTurn();
         }
     }
@@ -846,7 +847,16 @@ public class GameSession {
 
         Map<String, Object> gameState = new HashMap<>();
         gameState.put("action", "game_state");
+        gameState.put("state", state.toString());
 
+        broadcast(gameState);
+    }
+
+    private void broadcastGameStage() {
+
+        Map<String, Object> gameState = new HashMap<>();
+        gameState.put("action", "game_stage");
+        gameState.put("stage", stage.toString());
 
         broadcast(gameState);
     }
