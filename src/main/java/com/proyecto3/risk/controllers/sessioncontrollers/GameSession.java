@@ -780,7 +780,8 @@ public class GameSession {
             stage = GameStage.ATTACKING;
             attackPhase = AttackPhase.SELECTING_ATTACK;
 
-            broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
+           // broadcast(Map.of("action", "stage_change", "stage", "ATTACKING"));
+            broadcastGameStage();
 
             nextTurn();
         } else {
@@ -855,7 +856,7 @@ public class GameSession {
     private void broadcastGameStage() {
 
         Map<String, Object> gameState = new HashMap<>();
-        gameState.put("action", "game_stage");
+        gameState.put("action", "stage_change");
         gameState.put("stage", stage.toString());
 
         broadcast(gameState);
