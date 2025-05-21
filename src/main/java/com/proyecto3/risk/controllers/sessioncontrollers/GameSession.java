@@ -582,6 +582,8 @@ public class GameSession {
 
             stage = GameStage.ATTACKING;
             attackPhase = AttackPhase.SELECTING_ATTACK;
+            sendMapUpdate();
+            broadcastGameStage();
             nextTurn();
             return;
         }
@@ -667,11 +669,12 @@ public class GameSession {
             broadcast(fortificationMessage);
 
 
-            sendMapUpdate();
 
-            broadcastGameState();
-            broadcastGameStage();
-            nextTurn();
+           sendMapUpdate();
+
+       //     broadcastGameState();
+      //      broadcastGameStage();
+       //     nextTurn();
         }
     }
 
