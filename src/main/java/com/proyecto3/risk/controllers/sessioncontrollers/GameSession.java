@@ -896,7 +896,7 @@ public class GameSession {
 
         if (type.equals("end_turn")) {
             stage = GameStage.BONUS;
-
+            onEnteringBonus();
             sendMapUpdate();
             broadcastGameStage();
             nextTurn();
@@ -978,6 +978,7 @@ public class GameSession {
 
             sendMapUpdate();
             stage = GameStage.BONUS;
+            onEnteringBonus();
             broadcastGameStage();
             nextTurn();
         }
