@@ -454,27 +454,35 @@ public class GameSession {
             if (playerControlsFullContinent(playerId, continent)) {
                 totalBonusTroops += continent.getExtraTropes();
                 System.out.println("Player " + playerId + " gets " + continent.getExtraTropes() +
-                        " bonus troops for controlling " + continent.getName());
+                        " bonus troops for controlling CONTINENT -> " + continent.getName());
             }
         }
 
         System.out.println("REAL CONTINENT BONUS: " + totalBonusTroops);
-
-        // Minimum bonus based on territories controlled (1 troop per 3 territories, minimum 3)
-     /*  int territoryCount = playerOccupies.size();
-
-     int territoryBonus = Math.max(3, territoryCount / 3);
-        totalBonusTroops += territoryBonus;
-
-
-        System.out.println("Player " + playerId + " gets " + territoryBonus +
-                " bonus troops for controlling " + territoryCount + " territories");*/
 
         if(totalBonusTroops==0){
             System.out.println("SINCE Player " + playerId + " DOES NOT CONTROL ANY CONTINENT HE" + " gets NO bonus troops");
         }else{
             System.out.println("Player " + playerId + " gets " + totalBonusTroops +
                     " bonus troops for controlling continents");
+        }
+
+
+        // Minimum bonus based on territories controlled (1 troop per 3 territories, minimum 3)
+       int territoryCount = playerOccupies.size();
+
+      int territoryBonus = Math.max(3, territoryCount / 3);
+      totalBonusTroops += territoryBonus;
+
+
+        System.out.println("Player " + playerId + " gets " + territoryBonus +
+                " bonus troops for controlling " + territoryCount + " territories");
+
+        if(totalBonusTroops==0){
+            System.out.println("FINAL BONUS OF PLAYER " + playerId + " IS 0 CAUSE HE DOES NOT CONTROL ANY CONTINENT OR TERRITORY");
+        }else{
+            System.out.println("FINAL Player " + playerId + " BONUS " + totalBonusTroops +
+                    " for controlling continents and territories");
         }
 
         return totalBonusTroops;
