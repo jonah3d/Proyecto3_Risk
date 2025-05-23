@@ -275,14 +275,15 @@ public class GameSession {
                 bonusMessage.put("action", "bonus_to_place");
                 bonusMessage.put("bonusTroops", bonusTroops);
                 bonusMessage.put("totalTroopsToPlace", troopsToPlace.get(currentPlayerId));
+                bonusMessage.put("playerId", currentPlayerId);
                 bonusMessage.put("message", "You received " + bonusTroops + " bonus troops. Place them on your territories.");
                 sendToPlayer(currentPlayerId, bonusMessage);
 
-                Map<String, Object> bonusCollectedMessage = new HashMap<>();
+              /*  Map<String, Object> bonusCollectedMessage = new HashMap<>();
                 bonusCollectedMessage.put("action", "bonus");
                 bonusCollectedMessage.put("playerId", currentPlayerId);
                 bonusCollectedMessage.put("bonusTroops", bonusTroops);
-                broadcast(bonusCollectedMessage);
+                broadcast(bonusCollectedMessage);*/
 
                 // handleBonusInput(currentPlayerId,input);
 
@@ -896,10 +897,11 @@ public class GameSession {
 
         if (type.equals("end_turn")) {
             stage = GameStage.BONUS;
+            nextTurn();
             onEnteringBonus();
             sendMapUpdate();
             broadcastGameStage();
-            nextTurn();
+
             return;
         }
 
