@@ -25,6 +25,9 @@ public class Continent {
     @Column(name = "extra_tropes", nullable = false)
     private Integer extraTropes;
 
+    @Column(name = "max_country")
+    private Integer max_countries;
+
     @OneToMany(mappedBy = "continent")
     private List<Country> countries = new ArrayList<>();
 
@@ -60,4 +63,11 @@ public class Continent {
         this.countries = countries;
     }
 
+    public Integer getMaxcountries() {
+        return max_countries;
+    }
+
+    public void setMaxcountries(Integer maxcountries) {
+        this.max_countries = maxcountries;
+    }
 }

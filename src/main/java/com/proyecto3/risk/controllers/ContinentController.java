@@ -53,4 +53,17 @@ public class ContinentController {
         return new ResponseEntity<>(continentResponseDto, HttpStatus.OK);
     }
 
+    @GetMapping("/continents/id/{id}")
+    public ResponseEntity<ContinentResponseDto> getContinentById(@PathVariable long id) {
+        var continent = continentService.getContinentById(id);
+
+        if (continent == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        ContinentResponseDto continentResponseDto = modelMapper.map(continent, ContinentResponseDto.class);
+
+        return new ResponseEntity<>(continentResponseDto, HttpStatus.OK);
+    }
+
 }

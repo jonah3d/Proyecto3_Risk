@@ -8,4 +8,5 @@ public interface ContinentService {
 
     List<Continent> getAllContinents();
     Continent getContinentByName(String name);
+    Continent getContinentById(long id);
 }

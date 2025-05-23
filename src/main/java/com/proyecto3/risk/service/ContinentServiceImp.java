@@ -22,7 +22,7 @@ public class ContinentServiceImp implements ContinentService {
     @Override
     public List<Continent> getAllContinents() {
 
-        var continents = continentRepository.findAll();
+        var continents = continentRepository.findAllWithCountries();
 
         if (continents.isEmpty()) {
             throw new RuntimeException("No continents found");
@@ -39,6 +39,18 @@ public class ContinentServiceImp implements ContinentService {
         Continent continent = continentRepository.findByName(name);
         if(continent == null) {
             throw new RuntimeException("Continent not found with name: " + name);
+        }
+        return continent;
+    }
+
+    @Override
+    public Continent getContinentById(long id) {
+        if(id <= 0) {
+            throw new RuntimeException("Continent id cannot be null or empty");
+        }
+        Continent continent = continentRepository.findById(id).orElse(null);
+        if(continent == null) {
+            throw new RuntimeException("Continent not found with id: " + id);
         }
         return continent;
     }

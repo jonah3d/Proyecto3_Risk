@@ -6,9 +6,18 @@ public class ContinentResponseDto {
     private Long id;
     private String name;
     private Integer extraTropes;
+    private Integer max_countries;
     private List<CountryResponseDto> countries;
 
     public ContinentResponseDto() {
+    }
+
+    public Integer getMaxcountries() {
+        return max_countries;
+    }
+
+    public void setMaxcountries(Integer maxcountries) {
+        this.max_countries = maxcountries;
     }
 
     public Long getId() {

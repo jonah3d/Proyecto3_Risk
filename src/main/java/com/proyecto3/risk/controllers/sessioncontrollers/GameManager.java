@@ -2,6 +2,7 @@ package com.proyecto3.risk.controllers.sessioncontrollers;
 
 import com.nimbusds.jose.shaded.gson.JsonObject;
 import com.proyecto3.risk.service.BorderService;
+import com.proyecto3.risk.service.ContinentService;
 import com.proyecto3.risk.service.CountryService;
 import com.proyecto3.risk.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,9 @@ public class GameManager {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private ContinentService continentService;
+
     public String createGame(PlayerSession hostSession, int maxPlayers, boolean isPublic,String gameName) {
         String token = isPublic ?
                 UUID.randomUUID().toString().substring(0, 8) :
@@ -35,7 +39,8 @@ public class GameManager {
 
         System.out.println(token);
 
-        GameSession session = new GameSession(token, maxPlayers, isPublic,gameName,gameId,countryService,borderService,userService);
+        GameSession session = new GameSession(token, maxPlayers, isPublic,gameName,gameId,
+                countryService,borderService,userService,continentService);
         games.put(token, session);
 
 
