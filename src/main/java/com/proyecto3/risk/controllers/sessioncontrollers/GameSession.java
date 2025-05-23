@@ -116,10 +116,13 @@ public class GameSession {
 
             if (state == GameState.PLAYING) {
                 if (playerId.equals(currentPlayerId)) {
+
                     nextTurn();
                 }
 
             }
+
+            System.out.println("CURRENT PLAYER SIZE: " + players.size());
 
 
             if (players.isEmpty()) {
@@ -166,7 +169,7 @@ public class GameSession {
         broadcast(gameStartMessage);
 
 
-        // autoFillTerritories();
+         autoFillTerritories();
 
 
         if (stage == GameStage.OCCUPATION) {
@@ -234,6 +237,27 @@ public class GameSession {
     }
 
 
+    private void winGame(){
+        if(stage == GameStage.ATTACKING){
+            if(players.size()==1){
+
+                System.out.println(" ----- CURRENT SIZE -----> " + players.size());
+
+              PlayerSession ps =  players.get(currentPlayerId);
+                Map<String, Object> winMessage = new HashMap<>();
+                winMessage.put("action", "win");
+                winMessage.put("message", "You won the game!");
+                sendToPlayer(ps.getPlayer().getId(), winMessage);
+
+                Map<String, Object> broadcastWinMessage = new HashMap<>();
+                broadcastWinMessage.put("action", "win");
+                broadcastWinMessage.put("message", "Player " + ps.getPlayer().getId() + " won the game!");
+                broadcast(broadcastWinMessage);
+            }
+        }
+    }
+
+
     void onEnteringBonus() {
         if (stage == GameStage.BONUS) {
             System.out.println("++++++++++++++++++++++++++++++++++++++++++++");
@@ -281,6 +305,8 @@ public class GameSession {
     public void handlePlayerInput(Long playerId, JsonObject input) {
         // System.out.println("Handling player input: " + input.toString() + " from player: " + playerId);
         // System.out.println("Current game state: Stage=" + stage + ", Phase=" + attackPhase);
+
+        winGame();
 
         if (state != GameState.PLAYING) {
             //  System.out.println("Game not in playing state");
