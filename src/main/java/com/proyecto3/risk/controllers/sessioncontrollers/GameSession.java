@@ -106,6 +106,7 @@ public class GameSession {
 
 
         if (players.size() >= maxPlayers) {
+            System.out.println("CURRENT PLAYER SIZE: " + players.size());
             startGame();
         }
 

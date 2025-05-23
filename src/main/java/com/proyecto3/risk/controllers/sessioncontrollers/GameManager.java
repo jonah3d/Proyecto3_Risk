@@ -37,7 +37,7 @@ public class GameManager {
         long gameId = 10000 + Math.abs(UUID.randomUUID().getLeastSignificantBits() % 90000);
 
 
-        System.out.println(token);
+        System.out.println("GAME TOKEN ->>>>>>> >" + token);
 
         GameSession session = new GameSession(token, maxPlayers, isPublic,gameName,gameId,
                 countryService,borderService,userService,continentService);
