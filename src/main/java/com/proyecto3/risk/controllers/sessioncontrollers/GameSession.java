@@ -169,7 +169,7 @@ public class GameSession {
         broadcast(gameStartMessage);
 
 
-         autoFillTerritories();
+    //     autoFillTerritories();
 
 
         if (stage == GameStage.OCCUPATION) {
