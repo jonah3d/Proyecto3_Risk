@@ -12,6 +12,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 @RestController
@@ -24,6 +25,8 @@ public class LoginController {
     @Autowired
     private ModelMapper modelMapper;
 
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDto loginRequest) {
         // Find the user by username
@@ -34,10 +37,11 @@ public class LoginController {
         }
 
         // Compare the raw password (or hashed one if you hash it)
-        if (!user.getPassword().equals(loginRequest.getPassword())) {
+
+
+        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
         }
-
         // Convert to response DTO
         UserResponseDto responseDto = modelMapper.map(user, UserResponseDto.class);
 
