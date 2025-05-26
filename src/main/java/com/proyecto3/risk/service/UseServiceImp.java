@@ -6,6 +6,7 @@ import com.proyecto3.risk.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,7 +18,9 @@ public class UseServiceImp implements UserService{
 
     @Autowired
     private UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public UseServiceImp() {
     }
@@ -38,6 +41,7 @@ public class UseServiceImp implements UserService{
        }
 
        var user = userRepository.findUserByUsername(name);
+        System.out.println("IN USER SERVICE: " + user);
          if(user == null) {
              return null;
          }

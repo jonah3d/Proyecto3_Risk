@@ -13,6 +13,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 @RestController
@@ -25,26 +26,22 @@ public class LoginController {
     @Autowired
     private ModelMapper modelMapper;
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDto loginRequest) {
-        // Find the user by username
         User user = userService.getUserByUserName(loginRequest.getUsername());
 
-        if (user == null) {
+        System.out.println("ATTEMPTING TO LOGIN USER: " + loginRequest.getUsername() + " WITH PASSWORD: " + loginRequest.getPassword());
+        System.out.println("DATA FROM USER: " + user);
+
+        if (user == null || !passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
         }
 
-        // Compare the raw password (or hashed one if you hash it)
-
-
-        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
-        }
-        // Convert to response DTO
         UserResponseDto responseDto = modelMapper.map(user, UserResponseDto.class);
-
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 }
+
