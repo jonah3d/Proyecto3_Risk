@@ -172,18 +172,9 @@ public class GameSession {
         attackPhase = null;
 
         int initialTroops = calculateNumOfTroops(maxPlayers);
-        User user = null;
+
         for (Long playerId : players.keySet()) {
             troopsToPlace.put(playerId, initialTroops);
-          user =   userService.getUserById(playerId);
-
-         user.setGames(user.getGames() + 1);
-         userService.updateUser(user.getId(),user);
-
-            System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-            System.out.println("PLAYER UPDATED");
-            System.out.println(user);
-            System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 
         }
 
