@@ -192,6 +192,8 @@ public class GameSession {
         try {
 
             while (state == GameState.PLAYING) {
+               winGame();
+              //  System.out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
                 switch (stage) {
                     case OCCUPATION:
                         int troops_num = calculateNumOfTroops(maxPlayers);
@@ -278,6 +280,7 @@ public class GameSession {
                 bonusMessage.put("playerId", currentPlayerId);
                 bonusMessage.put("message", "You received " + bonusTroops + " bonus troops. Place them on your territories.");
                 sendToPlayer(currentPlayerId, bonusMessage);
+                broadcast(bonusMessage);
 
               /*  Map<String, Object> bonusCollectedMessage = new HashMap<>();
                 bonusCollectedMessage.put("action", "bonus");
