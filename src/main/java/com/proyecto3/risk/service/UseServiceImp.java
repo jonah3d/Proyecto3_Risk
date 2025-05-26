@@ -79,6 +79,10 @@ public class UseServiceImp implements UserService{
         existingUser.setLastName(newUserData.getLastName());
         existingUser.setEmail(newUserData.getEmail());
         existingUser.setAvatar(newUserData.getAvatar());
+
+        existingUser.setWins(newUserData.getWins());
+        existingUser.setGames(newUserData.getGames());
+
         if (newUserData.getPassword() != null && !newUserData.getPassword().isBlank()) {
             existingUser.setPassword(passwordEncoder.encode(newUserData.getPassword()));
         }
