@@ -14,13 +14,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-
 @RestController
 @RequestMapping("/api")
 public class LoginController {
-
-    @Autowired
-    private AuthenticationManager authenticationManager;
 
     @Autowired
     private UserService userService;
@@ -28,31 +24,23 @@ public class LoginController {
     @Autowired
     private ModelMapper modelMapper;
 
-
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDto loginRequest) {
-       try{
-           Authentication auth = authenticationManager.authenticate(
-                   new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
-           );
+        // Find the user by username
+        User user = userService.getUserByUserName(loginRequest.getUsername());
 
-           if (auth.isAuthenticated()) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
+        }
 
-                // Here you can return the user details or any other information you want
-               User user = userService.getUserByUserName(loginRequest.getUsername());
+        // Compare the raw password (or hashed one if you hash it)
+        if (!user.getPassword().equals(loginRequest.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
+        }
 
-                if (user == null) {
-                     return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
-                }
+        // Convert to response DTO
+        UserResponseDto responseDto = modelMapper.map(user, UserResponseDto.class);
 
-               UserResponseDto responseDto = modelMapper.map(user, UserResponseDto.class);
-               return new ResponseEntity<>(responseDto, HttpStatus.OK);
-           } else {
-               return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-           }
-       }catch (AuthenticationException ex){
-           return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password");
-       }
+        return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
-
 }
