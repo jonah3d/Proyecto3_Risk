@@ -19,6 +19,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @RestController
@@ -162,5 +163,29 @@ public class UserController {
 
         UserResponseDto responseDto = modelMapper.map(user, UserResponseDto.class);
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
+    }
+
+    @GetMapping("/{userId}/wins")
+    public ResponseEntity<Integer> getUserWins(@PathVariable Long userId) {
+        try {
+            Integer wins = userService.getUserWins(userId);
+            return new ResponseEntity<>(wins, HttpStatus.OK);
+        } catch (NoSuchElementException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/{userId}/games")
+    public ResponseEntity<Integer> getUserGamesPlayed(@PathVariable Long userId) {
+        try {
+            Integer gamesPlayed = userService.getUserGamesPlayed(userId);
+            return new ResponseEntity<>(gamesPlayed, HttpStatus.OK);
+        } catch (NoSuchElementException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

@@ -14,4 +14,10 @@ public interface UserRepository extends JpaRepository <User,Integer> {
 
     @Query("SELECT u FROM User u WHERE u.id = ?1")
     public User findUserById(Long id);
+
+    @Query("SELECT u.wins FROM User u WHERE u.id = ?1")
+    public Integer getUserWins(Long id);
+
+    @Query("SELECT u.games FROM User u WHERE u.id = ?1")
+    public Integer getUserGamesPlayed(Long id);
 }

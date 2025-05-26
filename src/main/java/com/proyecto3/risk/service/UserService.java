@@ -14,5 +14,7 @@ public interface UserService {
      User updateUser(Integer id, User newUserData);
      void deleteUser(String username, String password);
      User getUserById(Long id);
+     Integer getUserWins(Long id);
+     Integer getUserGamesPlayed(Long id);
 
 }

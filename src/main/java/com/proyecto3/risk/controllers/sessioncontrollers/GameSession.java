@@ -114,44 +114,56 @@ public class GameSession {
         PlayerSession removed = players.remove(playerId);
         if (removed != null) {
 
-            if (state == GameState.PLAYING) {
-                if (playerId.equals(currentPlayerId)) {
-
-                    nextTurn();
-                }
-
-            }
-
-            System.out.println("CURRENT PLAYER SIZE: " + players.size());
-
-
             if (players.isEmpty()) {
                 endGame();
                 return true;
             }
 
-
+            // Broadcast player list after player was removed
             broadcastPlayerList();
 
+            // Notify all players someone left
             Map<String, Object> leavePlayers = new HashMap<>();
             leavePlayers.put("action", "player_left");
             leavePlayers.put("player_id", playerId);
-
             broadcast(leavePlayers);
-            nextTurn();
+
+            if (state == GameState.PLAYING) {
+                if (playerId.equals(currentPlayerId)) {
+                    nextTurn(); // Only call if it was their turn
+                }
+
+                // Check for win condition
+                if (players.size() == 1 && stage == GameStage.ATTACKING) {
+                    winGame();
+                }
+            }
+
             return true;
         }
         return false;
     }
 
+
     private void broadcastPlayerList() {
+        List<Map<String, Object>> playerInfoList = players.values().stream()
+                .map(ps -> {
+                    Map<String, Object> playerInfo = new HashMap<>();
+                    User user = ps.getPlayer().getUser();
+                    playerInfo.put("id", user.getId());
+                    playerInfo.put("username", user.getUsername());
+                    playerInfo.put("avatar_url", user.getAvatar().getUrl());
+                    return playerInfo;
+                })
+                .collect(Collectors.toList());
 
         Map<String, Object> playerListMessage = new HashMap<>();
         playerListMessage.put("action", "player_list");
-        playerListMessage.put("players", players.values().stream().map(ps -> ps.getPlayer().getId()).collect(Collectors.toList()));
+        playerListMessage.put("players", playerInfoList);
 
         broadcast(playerListMessage);
     }
+
 
 
     private void startGame() {
@@ -160,8 +172,19 @@ public class GameSession {
         attackPhase = null;
 
         int initialTroops = calculateNumOfTroops(maxPlayers);
+        User user = null;
         for (Long playerId : players.keySet()) {
             troopsToPlace.put(playerId, initialTroops);
+          user =   userService.getUserById(playerId);
+
+         user.setGames(user.getGames() + 1);
+         userService.updateUser(user.getId(),user);
+
+            System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+            System.out.println("PLAYER UPDATED");
+            System.out.println(user);
+            System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+
         }
 
         Map<String, Object> gameStartMessage = new HashMap<>();
@@ -238,26 +261,27 @@ public class GameSession {
         }
     }
 
+    private void winGame() {
+        if (players.size() == 1) {
+            Long winnerId = players.keySet().iterator().next();
+            PlayerSession ps = players.get(winnerId);
 
-    private void winGame(){
-        if(stage == GameStage.ATTACKING){
-            if(players.size()==1){
+            System.out.println(" ----- WINNER IS -----> " + winnerId);
 
-                System.out.println(" ----- CURRENT SIZE -----> " + players.size());
+            Map<String, Object> winMessage = new HashMap<>();
+            winMessage.put("action", "win");
+            winMessage.put("message", "You won the game!");
+            sendToPlayer(winnerId, winMessage);
 
-              PlayerSession ps =  players.get(currentPlayerId);
-                Map<String, Object> winMessage = new HashMap<>();
-                winMessage.put("action", "win");
-                winMessage.put("message", "You won the game!");
-                sendToPlayer(ps.getPlayer().getId(), winMessage);
+            Map<String, Object> broadcastWinMessage = new HashMap<>();
+            broadcastWinMessage.put("action", "win");
+            broadcastWinMessage.put("message", "Player " + winnerId + " won the game!");
+            broadcast(broadcastWinMessage);
 
-                Map<String, Object> broadcastWinMessage = new HashMap<>();
-                broadcastWinMessage.put("action", "win");
-                broadcastWinMessage.put("message", "Player " + ps.getPlayer().getId() + " won the game!");
-                broadcast(broadcastWinMessage);
-            }
+            endGame(); // Important
         }
     }
+
 
 
     void onEnteringBonus() {
@@ -310,7 +334,7 @@ public class GameSession {
         // System.out.println("Handling player input: " + input.toString() + " from player: " + playerId);
         // System.out.println("Current game state: Stage=" + stage + ", Phase=" + attackPhase);
 
-        winGame();
+      //  winGame();
 
         if (state != GameState.PLAYING) {
             //  System.out.println("Game not in playing state");

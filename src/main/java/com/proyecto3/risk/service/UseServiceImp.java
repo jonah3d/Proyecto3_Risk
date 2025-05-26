@@ -105,4 +105,24 @@ public class UseServiceImp implements UserService{
         }
         return user;
     }
+
+    @Override
+    public Integer getUserWins(Long id) {
+      Integer wins =  userRepository.getUserWins(id);
+      if(wins == null) {
+          throw new NoSuchElementException("NO WINS FOUND FOR USER WITH ID: " + id);
+      }
+        return wins;
+    }
+
+    @Override
+    public Integer getUserGamesPlayed(Long id) {
+
+        Integer gamesPlayed = userRepository.getUserGamesPlayed(id);
+        System.out.println("Games played for user with ID " + id + ": " + gamesPlayed);
+        if(gamesPlayed == null) {
+            throw new NoSuchElementException("NO GAMES FOUND FOR USER WITH ID: " + id);
+        }
+        return gamesPlayed;
+    }
 }
