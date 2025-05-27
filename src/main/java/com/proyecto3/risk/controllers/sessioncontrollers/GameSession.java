@@ -119,7 +119,7 @@ public class GameSession {
                 return true;
             }
 
-            // Broadcast player list after player was removed
+
             broadcastPlayerList();
 
             // Notify all players someone left
@@ -190,7 +190,7 @@ public class GameSession {
         broadcast(gameStartMessage);
 
 
-         autoFillTerritories();
+     //    autoFillTerritories();
 
 
         if (stage == GameStage.OCCUPATION) {
@@ -290,13 +290,13 @@ public class GameSession {
             winMessage.put("action", "win");
             winMessage.put("message", "You won the game!");
             sendToPlayer(winnerId, winMessage);
-
+/*
             Map<String, Object> broadcastWinMessage = new HashMap<>();
             broadcastWinMessage.put("action", "game_over");
             broadcastWinMessage.put("winner", winnerId);
             broadcastWinMessage.put("message", "Player " + winnerId + " won the game!");
             broadcast(broadcastWinMessage);
-
+*/
             endGame();
         }
     }
