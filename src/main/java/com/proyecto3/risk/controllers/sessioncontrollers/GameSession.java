@@ -998,9 +998,10 @@ public class GameSession {
 
             sendMapUpdate();
             stage = GameStage.BONUS;
+            nextTurn();
             onEnteringBonus();
             broadcastGameStage();
-            nextTurn();
+
         }
     }
 
