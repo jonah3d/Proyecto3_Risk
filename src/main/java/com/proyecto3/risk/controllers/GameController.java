@@ -184,9 +184,12 @@ public class GameController {
 
 
         if (joined) {
+          var game =  gameManager.getGame(gameId);
             Map<String, Object> response = new HashMap<>();
             response.put("action", "joined_game");
             response.put("token", gameId);
+            response.put("gameName", game.getGameName());
+            response.put("maxPlayers", game.getMaxPlayers());
          //   response.put("playerId", playerUser);
 
             sessionManager.sendJsonMessage(session, response);
