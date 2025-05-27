@@ -290,13 +290,13 @@ public class GameSession {
             winMessage.put("action", "win");
             winMessage.put("message", "You won the game!");
             sendToPlayer(winnerId, winMessage);
-/*
+
             Map<String, Object> broadcastWinMessage = new HashMap<>();
             broadcastWinMessage.put("action", "game_over");
             broadcastWinMessage.put("winner", winnerId);
             broadcastWinMessage.put("message", "Player " + winnerId + " won the game!");
             broadcast(broadcastWinMessage);
-*/
+
             endGame();
         }
     }
