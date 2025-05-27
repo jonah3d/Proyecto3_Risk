@@ -176,6 +176,13 @@ public class GameSession {
         for (Long playerId : players.keySet()) {
             troopsToPlace.put(playerId, initialTroops);
 
+            try {
+                userService.incrementGamesPlayed(playerId);
+            } catch (Exception e) {
+                System.err.println("Failed to increment games played for user ID " + playerId + ": " + e.getMessage());
+
+            }
+
         }
 
         Map<String, Object> gameStartMessage = new HashMap<>();
