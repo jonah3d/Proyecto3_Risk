@@ -136,6 +136,17 @@ public class GameSession {
                 // Check for win condition
                 if (players.size() == 1 && stage == GameStage.ATTACKING) {
                     winGame();
+                }else if(players.size()>1 && state == GameState.PLAYING){
+                    state = GameState.FINISHED;
+
+                    Map<String, Object> gameEndMessage = new HashMap<>();
+                    gameEndMessage.put("action", "game_ended");
+                    gameEndMessage.put("message", "Game ended due to player leaving");
+                    broadcast(gameEndMessage);
+
+                    if (gameThread != null && gameThread.isAlive()) {
+                        gameThread.interrupt();
+                    }
                 }
             }
 
