@@ -32,7 +32,7 @@ public class GameManager {
     public String createGame(PlayerSession hostSession, int maxPlayers, boolean isPublic,String gameName) {
         String token = isPublic ?
                 UUID.randomUUID().toString().substring(0, 8) :
-                UUID.randomUUID().toString();
+                UUID.randomUUID().toString().substring(0,8);
 
         long gameId = 10000 + Math.abs(UUID.randomUUID().getLeastSignificantBits() % 90000);
 
