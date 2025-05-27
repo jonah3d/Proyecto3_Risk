@@ -179,8 +179,8 @@ public class GameSession {
             try {
                 userService.incrementGamesPlayed(playerId);
             } catch (Exception e) {
-                System.err.println("Failed to increment games played for user ID " + playerId + ": " + e.getMessage());
 
+                broadcast(Map.of("action", "error", "message", "Error incrementing games played for player: " + playerId));
             }
 
         }
@@ -260,11 +260,31 @@ public class GameSession {
     }
 
     private void winGame() {
+        Long winnerId = null;
+
+
         if (players.size() == 1) {
-            Long winnerId = players.keySet().iterator().next();
+            winnerId = players.keySet().iterator().next();
+            System.out.println(" ----- WINNER BY ELIMINATION -----> " + winnerId);
+        }
+
+        else {
+            winnerId = checkTerritorialVictory();
+            if (winnerId != null) {
+                System.out.println(" ----- WINNER BY TOTAL DOMINATION -----> " + winnerId);
+            }
+        }
+
+
+        if (winnerId != null) {
             PlayerSession ps = players.get(winnerId);
 
-            System.out.println(" ----- WINNER IS -----> " + winnerId);
+            try {
+                userService.incrementWins(winnerId);
+            } catch (Exception e) {
+                System.err.println("Error incrementing wins for player: " + winnerId + " - " + e.getMessage());
+                broadcast(Map.of("action", "error", "message", "Error incrementing wins for player: " + winnerId));
+            }
 
             Map<String, Object> winMessage = new HashMap<>();
             winMessage.put("action", "win");
@@ -272,12 +292,42 @@ public class GameSession {
             sendToPlayer(winnerId, winMessage);
 
             Map<String, Object> broadcastWinMessage = new HashMap<>();
-            broadcastWinMessage.put("action", "win");
+            broadcastWinMessage.put("action", "game_over");
+            broadcastWinMessage.put("winner", winnerId);
             broadcastWinMessage.put("message", "Player " + winnerId + " won the game!");
             broadcast(broadcastWinMessage);
 
-            endGame(); // Important
+            endGame();
         }
+    }
+
+
+    private Long checkTerritorialVictory() {
+        if (allCountrys == null || allCountrys.isEmpty()) {
+            return null;
+        }
+
+        Map<Long, Integer> territoryCount = new HashMap<>();
+
+        for (Map.Entry<Long, List<Occupy>> entry : occupies.entrySet()) {
+            Long playerId = entry.getKey();
+            List<Occupy> playerOccupies = entry.getValue();
+
+            if (playerOccupies != null) {
+                territoryCount.put(playerId, playerOccupies.size());
+            }
+        }
+
+        int totalTerritories = allCountrys.size();
+
+
+        for (Map.Entry<Long, Integer> entry : territoryCount.entrySet()) {
+            if (entry.getValue() == totalTerritories) {
+                return entry.getKey();
+            }
+        }
+
+        return null;
     }
 
 

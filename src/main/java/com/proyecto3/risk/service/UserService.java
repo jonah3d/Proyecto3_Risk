@@ -17,4 +17,5 @@ public interface UserService {
      Integer getUserWins(Long id);
      Integer getUserGamesPlayed(Long id);
      void incrementGamesPlayed(Long userId);
+     void incrementWins(Long userId);
 }

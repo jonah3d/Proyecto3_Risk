@@ -149,4 +149,17 @@ public class UseServiceImp implements UserService{
 
         System.out.println("Incremented games played for user ID: " + userId);
     }
+
+    @Override
+    @Transactional
+    public void incrementWins(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        int updatedRows = userRepository.incrementWins(userId);
+        if (updatedRows == 0) {
+            throw new NoSuchElementException("No user found with ID: " + userId);
+        }
+        System.out.println("Incremented wins for user ID: " + userId);
+    }
 }

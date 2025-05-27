@@ -26,4 +26,8 @@ public interface UserRepository extends JpaRepository <User,Integer> {
     @Modifying
     @Query("UPDATE User u SET u.games = u.games + 1 WHERE u.id = :userId")
     int incrementGamesPlayed(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("UPDATE User u SET u.wins = u.wins + 1 WHERE u.id = :userId")
+    int incrementWins(@Param("userId") Long userId);
 }
