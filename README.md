@@ -257,3 +257,315 @@ Retrieves all borders connected to a specific country ID.
 
 All these static data endpoints respond with 200 OK and a list/object DTO, or 
 appropriate ```404 NOT_FOUND```/```204 NO_CONTENT```/```400 BAD_REQUEST``` statuses. All are configured as ```permitAll()```.
+
+
+### WebSocket Message Flow (Actions and Responses)
+
+Messages are JSON objects containing an ```"action"``` field and additional data.
+
+#### Client Requests (Sent by Frontend):
+
+- ```action: "register"```
+
+  - Request Data: ```{ "userId": <Long> }```
+
+  - Purpose: Associates a connected WebSocket session with a registered user ID.
+
+- ```action: "create_game"```
+
+  - Request Data: ```{ "maxPlayers": <Integer>, "isPublic": <Boolean>, "gameName": <String> }```
+
+  - Purpose: Creates a new game lobby. maxPlayers (2-10).
+
+- ```action: "join_game"```
+
+  - Request Data: ```{ "token": <String> }```
+
+  - Purpose: Joins an existing game lobby using its unique token.
+
+- ```action: "leave_game"```
+
+  - Request Data: (No specific data, player is identified by session)
+
+  - Purpose: Player leaves the current game.
+
+- ```action: "list_games"```
+
+  - Request Data: (No specific data)
+
+  - Purpose: Requests a list of available public games.
+
+- ```action: "send_input"```
+
+  - Request Data: ```{ "data": <JsonObject> }```
+
+  - Purpose: Generic wrapper for in-game actions. The content of data depends on the current game stage.
+
+  - During Occupation/Bonus (```stage: "OCCUPATION" or "BONUS"```):
+
+    - data: ```{ "type": "place_troops", "countryId": <Long>, "troops": <Integer> }```
+
+    - Purpose: Places a specified number of troops on a controlled territory.
+
+  - During Attacking (```stage: "ATTACKING"```):
+
+    - data: ```{ "type": "attack", "countryId": <Long> (source), "enemyCountryId": <Long> (target), "troops": <Integer> (attacking troops) }```
+
+    - Purpose: Initiates an attack from ```sourceCountryId``` to ```enemyCountryId``` with ```troops```.
+
+    - data: ```{ "type": "end_attack" }```
+
+    - Purpose: Ends the attacking phase for the current player.
+
+    - data: ```{ "type": "move_troops", "troops": <Integer> }```
+
+    - Purpose: Moves troops into a newly conquered territory after a successful attack.
+
+  - During Reinforcement (```stage: "REFORCE"```):
+
+    - data: ```{ "type": "fortify", "sourceCountryId": <Long>, "targetCountryId": <Long>, "troops": <Integer> }```
+
+    - Purpose: Moves troops between two connected, player-controlled territories.
+
+    - data: ```{ "type": "end_turn" }```
+
+    - Purpose: Ends the current player's turn, transitioning to the next player.
+
+#### Server Responses (Sent by Backend):
+
+- ```action: "connected"```
+
+  - Data: ```{ "sessionId": <String> }```
+
+  - Purpose: Confirms successful WebSocket connection.
+
+- ```action: "registered"```
+
+  - Data: ```{ "playerId": <Long>, "playerName": <String> }```
+
+  - Purpose: Confirms player registration within the session manager.
+
+- ```action: "game_created"```
+
+  - Data: ```{ "id": <Long>, "token": <String>, "isPublic": <Boolean>, "maxPlayers": <Integer>, "gameName": <String> }```
+
+  - Purpose: Confirms game creation for the host player.
+
+- ```action: "joined_game"```
+
+  - Data: ```{ "token": <String>, "gameName": <String>, "maxPlayers": <Integer> }```
+
+  - Purpose: Confirms successful joining of a game for the player.
+
+- ```action: "left_game"```
+
+  - Data: ```{ "token": <String> }```
+
+  - Purpose: Notifies the player they have left a game.
+
+- ```action: "player_left"```
+
+  - Data: ```{ "player_id": <Long> }```
+
+  - Purpose: Broadcast to all players in a game that a specific player has left.
+
+- ```action: "games_list"```
+
+  - Data: ```{ "games": [ { "id": <Long>, "token": <String>, "players": <Integer>, "maxPlayers": <Integer>, "gameName": <String> }, ... ] }```
+
+  - Purpose: Provides a list of available public games.
+
+- ```action: "game_started"```
+
+  - Data: (No specific data)
+
+  - Purpose: Broadcast to all players that the game has started.
+
+- ```action: "player_list"```
+
+  - Data: ```{ "players": [ { "id": <Long>, "username": <String>, "avatar_url": <String> }, ... ] }```
+
+  - Purpose: Updates all players with the current list of players in the lobby/game.
+
+- ```action: "player_turn"```
+
+  - Data: ```{ "playerId": <Long> }```
+
+  - Purpose: Broadcasts whose turn it is.
+
+- ```action: "map_update"```
+
+  - Data: ```{ "countries": [ { "countryId": <Long>, "troops": <Integer>, "playerId": <Long> (owner, optional) }, ... ] }```
+
+  - Purpose: Provides a full update of the game board's territory ownership and troop counts.
+
+- ```action: "bonus_to_place"```
+
+  - Data: ```{ "bonusTroops": <Integer>, "totalTroopsToPlace": <Integer>, "playerId": <Long>, "message": <String> }```
+
+  - Purpose: Notifies the current player about bonus troops received at the start of their turn.
+
+- ```action: "troops_placed"```
+
+  - Data: ```{ "countryId": <Long>, "troopsPlaced": <Integer>, "remainingTroops": <Integer> }```
+
+  - Purpose: Confirms troop placement for the current player during occupation/bonus phases.
+
+- ```action: "no_bonus"```
+
+  - Data: ```{ "message": <String> }```
+
+  - Purpose: Notifies player that no bonus troops were received.
+
+- ```action: "attack_in_progress"```
+
+  - Data: ```{ "attackerId": <Long>, "defenderId": <Long>, "sourceCountryId": <Long>, "targetCountryId": <Long>, "attackingTroops": <Integer>, "defendingTroops": <Integer> }```
+
+  - Purpose: Broadcasts details of an ongoing attack to all spectators.
+
+- ```action: "territory_under_attack"```
+
+  - Data: ```{ "attackerId": <Long>, "sourceCountryId": <Long>, "targetCountryId": <Long>, "attackingTroops": <Integer>, "defendingTroops": <Integer> }```
+
+  - Purpose: Sent specifically to the defending player to notify them of an incoming attack.
+
+- ```action: "attack_initiated"```
+
+  - Data: ```{ "targetCountryId": <Long>, "defenderId": <Long>, "attackingTroops": <Integer>, "defendingTroops": <Integer> }```
+
+  - Purpose: Confirms attack initiation to the attacking player.
+
+- ```action: "dice_rolls"```
+
+  - Data: ```{ "attackerDice": [<Int>, ...], "defenderDice": [<Int>, ...] }```
+
+  - Purpose: Broadcasts the dice rolls for both attacker and defender during combat.
+
+- ```action: "attack_result"```
+
+  - Data: ```{ "attackerLosses": <Integer>, "defenderLosses": <Integer>, "sourceCountryTroopsRemaining": <Integer>, "targetCountryTroopsRemaining": <Integer> }```
+
+  - Purpose: Broadcasts the outcome of a combat round (losses for both sides).
+
+- ```action: "territory_conquered"```
+
+  - Data: ```{ "attackerId": <Long>, "defenderId": <Long>, "territoryId": <Long> }```
+
+  - Purpose: Broadcasts when a territory is successfully conquered.
+
+- ```action: "move_troops"```
+
+  - Data: ```{ "message": <String>, "sourceCountryId": <Long>, "targetCountryId": <Long>, "maxTroops": <Integer> }```
+
+  - Purpose: Prompts the attacking player to move troops into a newly conquered territory.
+
+- ```action: "fortification"```
+
+  - ```Data: { "playerId": <Long>, "sourceCountryId": <Long>, "targetCountryId": <Long>, "troops": <Integer> }```
+
+  - Purpose: Broadcasts details of a troop fortification move.
+
+- ```action: "stage_change"```
+
+  - Data: ```{ "stage": <String> ("OCCUPATION", "ATTACKING", "REFORCE", "BONUS"), "playerId": <Long> (current player, optional) }```
+  
+  - Purpose: Notifies clients about changes in the overall game stage.
+
+- ```action: "game_state"```
+
+  - Data: ```{ "state": <String> ("WAITING", "PLAYING", "FINISHED") }```
+
+  - Purpose: Broadcasts changes in the overall game state.
+
+- ```action: "lose"```
+
+  - Data: ```{ "message": <String>, "player_id": <Long> (optional for broadcast) }```
+
+  - Purpose: Notifies a player they have lost or broadcasts that a player has lost.
+
+- ```action: "win"```
+
+  - Data: ```{ "message": <String> }```
+
+  - Purpose: Sent to the winning player.
+
+- ```action: "game_over"```
+
+  - Data: ```{ "winner": <Long>, "message": <String> }```
+
+  - Purpose: Broadcast to all players when the game has concluded with a winner.
+
+- ```action: "error"```
+
+  - Data: ```{ "message": <String> }```
+
+  - Purpose: Generic error message.
+
+### Game Phases
+The game progresses through distinct states and stages, managed by the GameSession class:
+
+#### GameState (GameSession.GameState)
+- ```WAITING```: Players are joining the game lobby.
+
+- ```PLAYING```: The game is actively in progress.
+
+- ```FINISHED```: The game has concluded (e.g., a winner has been determined, or all but one player left).
+
+#### GameStage (GameSession.GameStage)
+These stages occur sequentially within a player's turn during the PLAYING state:
+
+- ```OCCUPATION```: Initial phase where players place their starting troops to occupy territories.
+
+- ```BONUS```: Players receive bonus troops based on controlled territories and continents. This is the first stage of each player's turn after the initial occupation phase.
+
+- ```ATTACKING```: Players can attack adjacent enemy territories.
+
+- ```REFORCE```: Players can fortify their positions by moving troops between their own connected territories.
+
+#### AttackPhase (GameSession.AttackPhase)
+Sub-phases within the ```ATTACKING stage```:
+
+- ```SELECTING_ATTACK```: Player chooses territories to attack from and to.
+
+- ```MOVING_TROOPS```: After conquering a territory, the player must move troops from the attacking country to the newly occupied one.
+
+- ```FINISHED```: The attacking phase is complete for the current player.
+
+### Data Transfer Objects (DTOs)
+The backend utilizes Data Transfer Objects (DTOs) to define the structure of data exchanged between the client and the server, ensuring efficient and type-safe communication. These DTOs typically mirror a subset of the entity properties, tailored for specific API operations.
+
+- AvatarResponseDto
+- BorderResponseDto
+- CardResponseDto
+- ContinentResponseDto
+- CountryResponseDto
+- LoginRequestDto
+- UpdateUserDto
+- UserRegistrationDto
+- UserResponseDto
+
+## Dockerization
+
+The project includes a Dockerfile for easy containerization, allowing the backend to be deployed consistently across various environments.
+```
+
+FROM maven:3.9.9-eclipse-temurin-24-alpine as build
+COPY . .
+RUN mvn clean package -DskipTests
+
+FROM openjdk:21-jdk
+COPY --from=build /target/*.jar risk.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/risk.jar"]
+
+
+```
+
+You do not need to build the docker on your local machine since its intended use is to deploy the backend to Railway cloud.
+
+The application will be accessible at ```http://localhost:8080```.
+Since at the time you might run this, the backend will be offline. 
+- You should clone this repository (Preferably in IntelliJ)
+- Run the dcl and ddl script provided in a mysql database.
+- Fill the ```application.properties``` file with the necessary information.
+- Run the application
