@@ -31,7 +31,7 @@ This repository contains the backend implementation for a multiplayer, multiplat
 
 - Hosting: Railway Cloud
 
-Frontend (as per presentation)
+Frontend Repositories by group members
 - Web Client: React, Axios, Zustand <a href="https://github.com/Markitus01/RISK">React Frontend Repo</a>
 
 - Desktop Client: WPF (.NET), C# <a href="https://github.com/BruPotrony/Risk">Wpf Frontend Repo</a>
