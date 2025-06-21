@@ -36,6 +36,22 @@ Frontend (as per presentation)
 
 - Desktop Client: WPF (.NET), C# <a href="https://github.com/BruPotrony/Risk">Wpf Frontend Repo</a>
 
+
+## Backend Quick Demo 
+
+[![Watch the video](https://img.youtube.com/vi/jadONOxYWfk/maxresdefault.jpg)](https://youtu.be/jadONOxYWfk)
+
+### [Watch this video on YouTube](https://youtu.be/jadONOxYWfk)
+
+
+
+## Frontend Demo 
+
+[![Watch the video](https://img.youtube.com/vi/140pGG0odw8/maxresdefault.jpg)](https://youtu.be/140pGG0odw8)
+
+### [Frontend Demo  React  +  WPF ](https://youtu.be/140pGG0odw8)
+
+
 ## Architecture Overview
 
 The backend is designed with a clear, layered architecture typical of Spring Boot applications, separating concerns into controllers, services, and repositories. 
